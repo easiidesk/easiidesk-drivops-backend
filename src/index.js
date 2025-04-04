@@ -1,15 +1,22 @@
-/**
- * Welcome to Cloudflare Workers! This is your first worker.
- *
- * - Run `npm run dev` in your terminal to start a development server
- * - Open a browser tab at http://localhost:8787/ to see your worker in action
- * - Run `npm run deploy` to publish your worker
- *
- * Learn more at https://developers.cloudflare.com/workers/
- */
+import { Router } from 'itty-router';
+// Adjusted import path if needed
+import { userController } from './controllers/userController.js';
 
-export default {
-	async fetch(request, env, ctx) {
-		return new Response('Hello World!');
-	},
-};
+// Create a new router
+const router = Router();
+
+// Add a specific root route for testing
+router.get('/', () => new Response('Root OK - Using Supabase', { status: 200 }));
+
+// Define API routes using the /api prefix
+router.get('/api/users', userController.getUsers);
+// Add other user routes as needed:
+// router.post('/api/users', userController.createUser);
+// router.get('/api/users/:id', userController.getUserById);
+// etc.
+
+// Catch-all for 404s - this should come *after* specific routes
+router.all('*', () => new Response('Not Found', { status: 404 }));
+
+// Fetch handler for the Worker
+export default router;

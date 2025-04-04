@@ -4,13 +4,21 @@
 	"private": true,
 	"scripts": {
 		"deploy": "wrangler deploy",
-		"dev": "wrangler dev",
-		"start": "wrangler dev",
-		"test": "vitest"
+		"dev": "wrangler dev src/index.js --local",
+		"start": "wrangler dev src/index.js --local",
+		"test": "vitest",
+		"logout": "wrangler logout",
+		"login": "wrangler login"
+	},
+	"dependencies": {
+		"@supabase/supabase-js": "^2.49.4",
+		"itty-router": "^5.0.10"
 	},
 	"devDependencies": {
 		"@cloudflare/vitest-pool-workers": "^0.7.5",
+		"@cloudflare/workers-types": "^4.20240725.0",
 		"vitest": "~3.0.7",
 		"wrangler": "^4.7.1"
-	}
+	},
+	"type": "module"
 }
