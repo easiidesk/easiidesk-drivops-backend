@@ -50,7 +50,7 @@ router.use(verifyToken);
  *         name: search
  *         schema:
  *           type: string
- *         description: Search by make, model, license plate, or VIN
+ *         description: Search by model, license plate
  *     responses:
  *       200:
  *         description: List of vehicles
@@ -104,7 +104,7 @@ router.get('/:id', validateParams(vehicleIdParamSchema), vehicleController.getVe
  *       400:
  *         description: Invalid data
  *       409:
- *         description: Duplicate license plate or VIN
+ *         description: Duplicate license plate
  *       401:
  *         description: Unauthorized
  *       403:
@@ -141,7 +141,7 @@ router.post('/', authorize(['admin', 'super-admin']), validateRequest(createVehi
  *       404:
  *         description: Vehicle not found
  *       409:
- *         description: Duplicate license plate or VIN
+ *         description: Duplicate license plate
  *       401:
  *         description: Unauthorized
  *       403:

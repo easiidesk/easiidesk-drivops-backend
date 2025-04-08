@@ -69,8 +69,10 @@ const userSchema = new mongoose.Schema({
       delete ret.__v;
       return ret;
     }
-  }
-});
+  },
+  collection: 'users'
+}
+);
 
 /**
  * Hash password before saving

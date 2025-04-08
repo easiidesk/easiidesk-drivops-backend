@@ -50,7 +50,7 @@ const login = async (phone, password, fcmToken) => {
   
   // Return user data and token
   return {
-    userId: user._id,
+    _id: user._id,
     name: user.name,
     email: user.email,
     phone: user.phone,

@@ -19,9 +19,10 @@ const paginate = (schema) => {
    * @param {number} [options.limit] - Maximum number of results per page (default = 10)
    * @param {number} [options.page] - Current page (default = 1)
    * @param {string} [options.populate] - Paths to populate
+   * @param {boolean} [options.pagination] - Whether to use pagination (default = true)
    * @returns {Promise<QueryResult>}
    */
-  schema.statics.paginate = async function (filter, options) {
+  schema.statics.paginate = async function (filter, options = {}) {
     let sort = {};
     if (options.sortBy) {
       const parts = options.sortBy.split(':');
@@ -31,13 +32,31 @@ const paginate = (schema) => {
       sort = { createdAt: -1 };
     }
 
-    const limit = options.limit && parseInt(options.limit, 10) > 0 ? parseInt(options.limit, 10) : 10;
-    const page = options.page && parseInt(options.page, 10) > 0 ? parseInt(options.page, 10) : 1;
-    const skip = (page - 1) * limit;
+    // Check if pagination is explicitly disabled or if limit is set to 0 or not provided
+    const usePagination = options.pagination !== false && 
+                         (options.limit !== undefined && 
+                          options.limit !== null && 
+                          parseInt(options.limit, 10) !== 0);
 
-    // Build the query
-    const countPromise = this.countDocuments(filter).exec();
-    let docsPromise = this.find(filter).sort(sort).skip(skip).limit(limit);
+    // Get count for total results
+    const totalResults = await this.countDocuments(filter).exec();
+    
+    // Build base query
+    let docsPromise = this.find(filter).sort(sort);
+
+    let page = 1;
+    let limit = totalResults; // Default to all results
+    let totalPages = 1;
+
+    // Apply pagination if enabled
+    if (usePagination) {
+      limit = parseInt(options.limit, 10) > 0 ? parseInt(options.limit, 10) : 10;
+      page = options.page && parseInt(options.page, 10) > 0 ? parseInt(options.page, 10) : 1;
+      const skip = (page - 1) * limit;
+      
+      docsPromise = docsPromise.skip(skip).limit(limit);
+      totalPages = Math.ceil(totalResults / limit);
+    }
 
     // Handle population if requested
     if (options.populate) {
@@ -46,11 +65,10 @@ const paginate = (schema) => {
       });
     }
 
-    // Execute queries
-    const [totalResults, results] = await Promise.all([countPromise, docsPromise.exec()]);
-    const totalPages = Math.ceil(totalResults / limit);
+    // Execute query
+    const results = await docsPromise.exec();
 
-    // Return paginated results
+    // Return results with pagination metadata
     return {
       results,
       page,

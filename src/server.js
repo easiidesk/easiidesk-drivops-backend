@@ -11,6 +11,10 @@ const vehicleRoutes = require('./routes/vehicle.route');
 const driverRoutes = require('./routes/driver.route');
 const tripRoutes = require('./routes/trip.route');
 const maintenanceRoutes = require('./routes/maintenance.route');
+const tripRequestRoutes = require('./routes/tripRequest.route');
+const tripScheduleRoutes = require('./routes/tripSchedule.route');
+const tripPurposeRoutes = require('./routes/tripPurpose.route');
+const dashboardRoutes = require('./routes/dashboard.route');
 
 // Initialize Express application
 const app = initializeApp();
@@ -30,7 +34,11 @@ const routes = {
   'vehicles': vehicleRoutes,
   'drivers': driverRoutes,
   'trips': tripRoutes,
-  'maintenance': maintenanceRoutes
+  'maintenance': maintenanceRoutes,
+  'trip-requests': tripRequestRoutes,
+  'schedules': tripScheduleRoutes,
+  'trip-purposes': tripPurposeRoutes,
+  'dashboard': dashboardRoutes
 };
 
 // Apply routes to application

@@ -58,17 +58,14 @@ const getVehicleById = async (id) => {
  * @returns {Promise<Object>} Created vehicle
  */
 const createVehicle = async (vehicleData) => {
-  // Check if vehicle with the same license plate or VIN exists
+  // Check if vehicle with the same license plate exists
   const existingVehicle = await Vehicle.findOne({
-    $or: [
-      { licensePlate: vehicleData.licensePlate },
-      { vin: vehicleData.vin }
-    ],
+    licensePlate: vehicleData.licensePlate,
     deletedAt: null
   });
   
   if (existingVehicle) {
-    throw new Error('Vehicle with the same license plate or VIN already exists');
+    throw new Error('Vehicle with the same license plate already exists');
   }
   
   // Check if driver exists and is valid (if assigned)
@@ -104,9 +101,9 @@ const updateVehicle = async (id, updateData) => {
   if (!vehicle) {
     throw new Error('Vehicle not found');
   }
-  
-  // Check for duplicate license plate or VIN
-  if (updateData.licensePlate || updateData.vin) {
+      
+  // Check for duplicate license plate
+  if (updateData.licensePlate) {
     const query = { 
       _id: { $ne: id },
       deletedAt: null,
@@ -117,14 +114,10 @@ const updateVehicle = async (id, updateData) => {
       query.$or.push({ licensePlate: updateData.licensePlate });
     }
     
-    if (updateData.vin) {
-      query.$or.push({ vin: updateData.vin });
-    }
-    
     if (query.$or.length > 0) {
       const existingVehicle = await Vehicle.findOne(query);
       if (existingVehicle) {
-        throw new Error('License plate or VIN already in use');
+        throw new Error('License plate already in use');
       }
     }
   }

@@ -36,7 +36,7 @@ const getTrips = async (filters = {}, options = {}) => {
         select: 'name email phone'
       }
     })
-    .populate('vehicle', 'make model licensePlate')
+    .populate('vehicle', 'name licensePlate')
     .populate('createdBy', 'name email')
     .sort(queryOptions.sort)
     .skip(skip)
@@ -72,7 +72,7 @@ const getTripById = async (id) => {
         select: 'name email phone'
       }
     })
-    .populate('vehicle', 'make model licensePlate type year color')
+    .populate('vehicle', 'name licensePlate')
     .populate('createdBy', 'name email');
 };
 
@@ -98,7 +98,7 @@ const getTripsByDriver = async (driverId, options = {}) => {
     isActive: true,
     deletedAt: null
   })
-    .populate('vehicle', 'make model licensePlate')
+    .populate('vehicle', 'name licensePlate')
     .populate('createdBy', 'name email')
     .sort(queryOptions.sort)
     .skip(skip)
@@ -482,7 +482,7 @@ const updateTripStatus = async (id, status, statusData = {}) => {
   trip.updatedAt = new Date();
   await trip.save();
   
-  // If trip is cancelled or completed, make driver available again
+  // If trip is cancelled or completed, driver available again
   if (status === 'cancelled' || status === 'completed') {
     await Driver.findByIdAndUpdate(
       trip.driver,

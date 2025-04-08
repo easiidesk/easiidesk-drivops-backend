@@ -1,40 +1,56 @@
 const mongoose = require('mongoose');
+const { toJSON, paginate } = require('./plugins');
 
-const notificationHistorySchema = new mongoose.Schema({
-  userId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true
+/**
+ * Notification History schema
+ * @private
+ */
+const notificationHistorySchema = mongoose.Schema(
+  {
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: true
+    },
+    title: {
+      type: String,
+      required: true,
+      trim: true
+    },
+    body: {
+      type: String,
+      required: true,
+      trim: true
+    },
+    data: {
+      type: mongoose.Schema.Types.Mixed
+    },
+    isRead: {
+      type: Boolean,
+      default: false
+    },
+    isActive: {
+      type: Boolean,
+      default: true
+    }
   },
-  title: {
-    type: String,
-    required: true
-  },
-  body: {
-    type: String,
-    required: true
-  },
-  data: {
-    type: mongoose.Schema.Types.Mixed
-  },
-  isRead: {
-    type: Boolean,
-    default: false
-  },
-  isActive: {
-    type: Boolean,
-    default: true
-  },
-  createdAt: {
-    type: Date,
-    default: Date.now
-  },
-  updatedAt: {
-    type: Date,
-    default: Date.now
+  {
+    timestamps: true
   }
-});
+);
 
-module.exports = {
-  NotificationHistory: mongoose.model('NotificationHistory', notificationHistorySchema)
-}; 
+// Add indexes for common queries
+notificationHistorySchema.index({ userId: 1 });
+notificationHistorySchema.index({ isRead: 1 });
+notificationHistorySchema.index({ createdAt: -1 });
+
+// Add plugins
+notificationHistorySchema.plugin(toJSON);
+notificationHistorySchema.plugin(paginate);
+
+/**
+ * @typedef NotificationHistory
+ */
+const NotificationHistory = mongoose.model('NotificationHistory', notificationHistorySchema);
+
+module.exports = NotificationHistory; 

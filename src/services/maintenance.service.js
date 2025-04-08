@@ -25,7 +25,7 @@ const createMaintenance = async (maintenanceBody, userId) => {
  */
 const getMaintenanceById = async (id) => {
   const maintenance = await Maintenance.findById(id)
-    .populate('vehicle', 'make model year vin')
+    .populate('vehicle', 'name year licensePlate')
     .populate('createdBy', 'name email')
     .populate('updatedBy', 'name email');
   
@@ -68,7 +68,7 @@ const getAllMaintenance = async (filter = {}, options = {}) => {
   return Maintenance.paginate(filter, {
     ...pagination,
     populate: [
-      { path: 'vehicle', select: 'make model year vin' },
+      { path: 'vehicle', select: 'name year licensePlate' },
       { path: 'createdBy', select: 'name email' },
       { path: 'updatedBy', select: 'name email' }
     ],
@@ -182,7 +182,7 @@ const queryMaintenance = async (query, options) => {
       {
         ...pagination,
         populate: [
-          { path: 'vehicle', select: 'make model year vin' },
+          { path: 'vehicle', select: 'name year licensePlate' },
           { path: 'createdBy', select: 'name email' },
           { path: 'updatedBy', select: 'name email' }
         ],

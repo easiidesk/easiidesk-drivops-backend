@@ -33,6 +33,10 @@ const validateRequest = (schema) => {
 const validateQuery = (schema) => {
   return async (req, res, next) => {
     try {
+      if(!req.query) {
+        req.query = {};
+        next();
+      } else {
       // Validate query parameters against schema
       const validatedQuery = await schema.validate(req.query, { 
         abortEarly: false,
@@ -42,6 +46,7 @@ const validateQuery = (schema) => {
       // Replace req.query with validated query
       req.query = validatedQuery;
       next();
+      }
     } catch (error) {
       // Extract validation errors
       const errors = {};

@@ -7,5 +7,11 @@ module.exports = {
   vehicleService: require('./vehicle.service'),
   driverService: require('./driver.service'),
   tripService: require('./trip.service'),
-  maintenanceService: require('./maintenance.service')
+  maintenanceService: require('./maintenance.service'),
+  tripRequestService: require('./tripRequest.service'),
+  tripScheduleService: require('./tripSchedule.service'),
+  notificationHistoryService: require('./notificationHistory.service'),
+  notificationSettingsService: require('./notificationSettings.service'),
+  dashboardService: require('./dashboard.service'),
+  tripPurposeService: require('./tripPurpose.service')
 }; 

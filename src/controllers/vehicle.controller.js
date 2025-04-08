@@ -24,10 +24,8 @@ const getVehicles = async (req, res, next) => {
     
     if (search) {
       filters.$or = [
-        { make: { $regex: search, $options: 'i' } },
-        { model: { $regex: search, $options: 'i' } },
-        { licensePlate: { $regex: search, $options: 'i' } },
-        { vin: { $regex: search, $options: 'i' } }
+        { name: { $regex: search, $options: 'i' } },
+        { licensePlate: { $regex: search, $options: 'i' } }
       ];
     }
     

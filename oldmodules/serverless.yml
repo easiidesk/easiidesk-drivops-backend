@@ -1,0 +1,780 @@
+service: easiidesk-transportation-backend
+
+frameworkVersion: '3'
+
+custom:
+  serverless-offline:
+    httpPort: 3001
+  dotenv:
+    path: ./.env
+    include:
+      - MONGODB_URI
+      - JWT_SECRET
+      - NODE_ENV
+      - FIREBASE_PROJECT_ID
+      - FIREBASE_CLIENT_EMAIL
+      - FIREBASE_PRIVATE_KEY
+  # Add custom settings for API
+  apiPrefix: tse-easiidesk-drivops
+    
+provider:
+  name: aws
+  runtime: nodejs18.x
+  stage: ${opt:stage, 'dev'}
+  region: me-central-1
+  environment:
+    MONGODB_URI: ${env:MONGODB_URI, ''}
+    JWT_SECRET: ${env:JWT_SECRET, ''}
+    NODE_ENV: ${self:provider.stage}
+    FIREBASE_PROJECT_ID: ${env:FIREBASE_PROJECT_ID, ''}
+    FIREBASE_CLIENT_EMAIL: ${env:FIREBASE_CLIENT_EMAIL, ''}
+    FIREBASE_PRIVATE_KEY: ${env:FIREBASE_PRIVATE_KEY, ''}
+  
+  # Configure API Gateway
+  apiGateway:
+    # Remove stage from URL path
+    shouldStartNameWithService: false
+    minimumCompressionSize: 1024
+  
+  iamRoleStatements:
+    - Effect: Allow
+      Action: '*'
+      Resource: '*'
+
+plugins:
+  - serverless-dotenv-plugin
+  - serverless-offline
+
+package:
+  individually: false
+
+functions:
+  
+  userLogin:
+    name: ${self:service}-userLogin
+    handler: src/modules/users/handlers/login.handler
+    events:
+      - http:
+          path: ${self:custom.apiPrefix}/users/login
+          method: post
+          cors: true
+  
+  getUser:
+    name: ${self:service}-getUser
+    handler: src/modules/users/handlers/getUser.handler
+    events:
+      - http:
+          path: ${self:custom.apiPrefix}/users/{id}
+          method: get
+          cors: true
+          authorizer:
+            name: verifyToken
+            type: token
+            identitySource: method.request.header.x-access-token
+
+  getUsers:
+    name: ${self:service}-getUsers
+    handler: src/modules/users/handlers/getUsers.handler
+    events:
+      - http:
+          path: ${self:custom.apiPrefix}/users
+          method: get
+          cors: true
+          authorizer:
+            name: verifyToken
+            type: token
+            identitySource: method.request.header.x-access-token
+
+  createUser:
+    name: ${self:service}-createUser
+    handler: src/modules/users/handlers/createUser.handler
+    events:
+      - http:
+          path: ${self:custom.apiPrefix}/users
+          method: post
+          cors: true
+          authorizer:
+            name: verifyToken
+            type: token
+            identitySource: method.request.header.x-access-token
+
+  updateUser:
+    name: ${self:service}-updateUser
+    handler: src/modules/users/handlers/updateUser.handler
+    events:
+      - http:
+          path: ${self:custom.apiPrefix}/users/{id}
+          method: put
+          cors: true
+          authorizer:
+            name: verifyToken
+            type: token
+            identitySource: method.request.header.x-access-token
+
+  deleteUser:
+    name: ${self:service}-deleteUser
+    handler: src/modules/users/handlers/deleteUser.handler
+    events:
+      - http:
+          path: ${self:custom.apiPrefix}/users/{id}
+          method: delete
+          cors: true
+          authorizer:
+            name: verifyToken
+            type: token
+            identitySource: method.request.header.x-access-token
+  
+  updateProfile:
+    name: ${self:service}-updateProfile
+    handler: src/modules/users/handlers/updateProfile.handler
+    events:
+      - http:
+          path: ${self:custom.apiPrefix}/users/me
+          method: put
+          cors: true
+          authorizer:
+            name: verifyToken
+            type: token
+            identitySource: method.request.header.x-access-token
+
+  changePassword:
+    name: ${self:service}-changePassword
+    handler: src/modules/users/handlers/changePassword.handler
+    events:
+      - http:
+          path: ${self:custom.apiPrefix}/users/me/change-password
+          method: put
+          cors: true
+          authorizer:
+            name: verifyToken
+            type: token
+            identitySource: method.request.header.x-access-token
+  resetPassword:
+    name: ${self:service}-resetPassword
+    handler: src/modules/users/handlers/resetPassword.handler
+    events:
+      - http:
+          path: ${self:custom.apiPrefix}/users/{id}/reset-password
+          method: post
+          cors: true
+          authorizer:
+            name: verifyToken
+            type: token
+            identitySource: method.request.header.x-access-token
+  verifyToken:
+    name: ${self:service}-verifyToken
+    handler: src/common/auth/verifyToken.handler
+
+  # Vehicle functions
+  getVehicles:
+    name: ${self:service}-getVehicles
+    handler: src/modules/vehicles/handlers/getVehicles.handler
+    events:
+      - http:
+          path: ${self:custom.apiPrefix}/vehicles
+          method: get
+          cors: true
+          authorizer:
+            name: verifyToken
+            type: token
+            identitySource: method.request.header.x-access-token
+
+  getVehicleById:
+    name: ${self:service}-getVehicleById
+    handler: src/modules/vehicles/handlers/getVehicleById.handler
+    events:
+      - http:
+          path: ${self:custom.apiPrefix}/vehicles/{id}
+          method: get
+          cors: true
+          authorizer:
+            name: verifyToken
+            type: token
+            identitySource: method.request.header.x-access-token
+
+  createVehicle:
+    name: ${self:service}-createVehicle
+    handler: src/modules/vehicles/handlers/createVehicle.handler
+    events:
+      - http:
+          path: ${self:custom.apiPrefix}/vehicles
+          method: post
+          cors: true
+          authorizer:
+            name: verifyToken
+            type: token
+            identitySource: method.request.header.x-access-token
+
+  updateVehicle:
+    name: ${self:service}-updateVehicle
+    handler: src/modules/vehicles/handlers/updateVehicle.handler
+    events:
+      - http:
+          path: ${self:custom.apiPrefix}/vehicles/{id}
+          method: put
+          cors: true
+          authorizer:
+            name: verifyToken
+            type: token
+            identitySource: method.request.header.x-access-token
+
+  deleteVehicle:
+    name: ${self:service}-deleteVehicle
+    handler: src/modules/vehicles/handlers/deleteVehicle.handler
+    events:
+      - http:
+          path: ${self:custom.apiPrefix}/vehicles/{id}
+          method: delete  
+          cors: true
+          authorizer:
+            name: verifyToken
+            type: token
+            identitySource: method.request.header.x-access-token
+
+  updateMaintenanceStatus:
+    name: ${self:service}-updateMaintenanceStatus
+    handler: src/modules/vehicles/handlers/updateMaintenanceStatus.handler
+    events:
+      - http:
+          path: ${self:custom.apiPrefix}/vehicles/{id}/maintenance  
+          method: put
+          cors: true
+          authorizer:
+            name: verifyToken
+            type: token
+            identitySource: method.request.header.x-access-token
+
+  # Trip Purpose functions
+  getTripPurposes:
+    name: ${self:service}-getTripPurposes
+    handler: src/modules/tripPurpose/handlers/getTripPurposes.handler
+    events:
+      - http:
+          path: ${self:custom.apiPrefix}/trip-purposes
+          method: get
+          cors: true
+          authorizer:
+            name: verifyToken
+            type: token
+            identitySource: method.request.header.x-access-token
+
+  getTripPurposeById:
+    name: ${self:service}-getTripPurposeById
+    handler: src/modules/tripPurpose/handlers/getTripPurposeById.handler
+    events:
+      - http:
+          path: ${self:custom.apiPrefix}/trip-purposes/{id}
+          method: get
+          cors: true
+          authorizer:
+            name: verifyToken
+            type: token
+            identitySource: method.request.header.x-access-token
+
+  createTripPurpose:
+    name: ${self:service}-createTripPurpose
+    handler: src/modules/tripPurpose/handlers/createTripPurpose.handler
+    events:
+      - http:
+          path: ${self:custom.apiPrefix}/trip-purposes
+          method: post
+          cors: true
+          authorizer:
+            name: verifyToken
+            type: token
+            identitySource: method.request.header.x-access-token
+
+  updateTripPurpose:
+    name: ${self:service}-updateTripPurpose
+    handler: src/modules/tripPurpose/handlers/updateTripPurpose.handler
+    events:
+      - http:
+          path: ${self:custom.apiPrefix}/trip-purposes/{id}
+          method: put
+          cors: true
+          authorizer:
+            name: verifyToken
+            type: token
+            identitySource: method.request.header.x-access-token
+
+  deleteTripPurpose:
+    name: ${self:service}-deleteTripPurpose
+    handler: src/modules/tripPurpose/handlers/deleteTripPurpose.handler
+    events:
+      - http:
+          path: ${self:custom.apiPrefix}/trip-purposes/{id}
+          method: delete
+          cors: true
+          authorizer:
+            name: verifyToken
+            type: token
+            identitySource: method.request.header.x-access-token
+
+  # Trip Request functions
+  getTripRequests:
+    name: ${self:service}-getTripRequests
+    handler: src/modules/tripRequests/handlers/getTripRequests.handler
+    events:
+      - http:
+          path: ${self:custom.apiPrefix}/trip-requests
+          method: get
+          cors: true
+          authorizer:
+            name: verifyToken
+            type: token
+            identitySource: method.request.header.x-access-token
+
+  getTripRequestById:
+    name: ${self:service}-getTripRequestById
+    handler: src/modules/tripRequests/handlers/getTripRequestById.handler
+    events:
+      - http:
+          path: ${self:custom.apiPrefix}/trip-requests/{id}
+          method: get
+          cors: true
+          authorizer:
+            name: verifyToken
+            type: token
+            identitySource: method.request.header.x-access-token
+
+  createTripRequest:
+    name: ${self:service}-createTripRequest
+    handler: src/modules/tripRequests/handlers/createTripRequest.handler
+    events:
+      - http:
+          path: ${self:custom.apiPrefix}/trip-requests
+          method: post
+          cors: true
+          authorizer:
+            name: verifyToken
+            type: token
+            identitySource: method.request.header.x-access-token
+
+  updateTripRequest:
+    name: ${self:service}-updateTripRequest
+    handler: src/modules/tripRequests/handlers/updateTripRequest.handler
+    events:
+      - http:
+          path: ${self:custom.apiPrefix}/trip-requests/{id}
+          method: put
+          cors: true
+          authorizer:
+            name: verifyToken
+            type: token
+            identitySource: method.request.header.x-access-token
+
+  deleteTripRequest:
+    name: ${self:service}-deleteTripRequest
+    handler: src/modules/tripRequests/handlers/deleteTripRequest.handler
+    events:
+      - http:
+          path: ${self:custom.apiPrefix}/trip-requests/{id}
+          method: delete
+          cors: true
+          authorizer:
+            name: verifyToken
+            type: token
+            identitySource: method.request.header.x-access-token
+
+  # Driver functions
+  getDrivers:
+    name: ${self:service}-getDrivers
+    handler: src/modules/drivers/handlers/getDrivers.handler
+    events:
+      - http:
+          path: ${self:custom.apiPrefix}/drivers
+          method: get
+          cors: true
+          authorizer:
+            name: verifyToken
+            type: token
+            identitySource: method.request.header.x-access-token
+
+  getDriverById:
+    name: ${self:service}-getDriverById
+    handler: src/modules/drivers/handlers/getDriverById.handler
+    events:
+      - http:
+          path: ${self:custom.apiPrefix}/drivers/{id}
+          method: get
+          cors: true
+          authorizer:
+            name: verifyToken
+            type: token
+            identitySource: method.request.header.x-access-token
+
+  getMe:
+    name: ${self:service}-getMe
+    handler: src/modules/users/handlers/getMe.handler
+    events:
+      - http:
+          path: ${self:custom.apiPrefix}/users/me
+          method: get
+          cors: true
+          authorizer:
+            name: verifyToken
+            type: token
+            identitySource: method.request.header.x-access-token
+
+  # Trip Schedule functions
+  getSchedules:
+    name: ${self:service}-getSchedules
+    handler: src/modules/tripSchedule/handlers/getSchedules.handler
+    events:
+      - http:
+          path: ${self:custom.apiPrefix}/schedules
+          method: get
+          cors: true
+          authorizer:
+            name: verifyToken
+            type: token
+            identitySource: method.request.header.x-access-token
+
+  getScheduleById:
+    name: ${self:service}-getScheduleById
+    handler: src/modules/tripSchedule/handlers/getScheduleById.handler
+    events:
+      - http:
+          path: ${self:custom.apiPrefix}/schedules/{id}
+          method: get
+          cors: true
+          authorizer:
+            name: verifyToken
+            type: token
+            identitySource: method.request.header.x-access-token
+
+  createSchedule:
+    name: ${self:service}-createSchedule
+    handler: src/modules/tripSchedule/handlers/createSchedule.handler
+    events:
+      - http:
+          path: ${self:custom.apiPrefix}/schedules
+          method: post
+          cors: true
+          authorizer:
+            name: verifyToken
+            type: token
+            identitySource: method.request.header.x-access-token
+
+  updateSchedule:
+    name: ${self:service}-updateSchedule
+    handler: src/modules/tripSchedule/handlers/updateSchedule.handler
+    events:
+      - http:
+          path: ${self:custom.apiPrefix}/schedules/{id}
+          method: put
+          cors: true
+          authorizer:
+            name: verifyToken
+            type: token
+            identitySource: method.request.header.x-access-token
+
+  deleteSchedule:
+    name: ${self:service}-deleteSchedule
+    handler: src/modules/tripSchedule/handlers/deleteSchedule.handler
+    events:
+      - http:
+          path: ${self:custom.apiPrefix}/schedules/{id}
+          method: delete
+          cors: true
+          authorizer:
+            name: verifyToken
+            type: token
+            identitySource: method.request.header.x-access-token
+
+  logout:
+    name: ${self:service}-logout
+    handler: src/modules/users/handlers/logout.handler
+    events:
+      - http:
+          path: ${self:custom.apiPrefix}/users/logout
+          method: post
+          cors: true
+          authorizer:
+            name: verifyToken
+            type: token
+            identitySource: method.request.header.x-access-token
+
+  sendNotification:
+    name: ${self:service}-sendNotification
+    handler: src/modules/notification/handlers/sendNotification.handler
+    events:
+      - http:
+          path: ${self:custom.apiPrefix}/notifications/send
+          method: post
+          cors: true
+          authorizer:
+            name: verifyToken
+            type: token
+            identitySource: method.request.header.x-access-token
+
+  # Driver App Functions
+  driverLogin:
+    handler: src/modules/driverApp/handlers/driverLogin.handler
+    events:
+      - http:
+          path: ${self:custom.apiPrefix}/driver/login
+          method: post
+          cors: true
+
+  driverLogout:
+    handler: src/modules/driverApp/handlers/driverLogout.handler
+    events:
+      - http:
+          path: /driver/auth/logout
+          method: post
+          cors: true
+          authorizer:
+            name: verifyToken
+            type: token
+            identitySource: method.request.header.x-access-token
+
+  driverPunchIn:
+    handler: src/modules/driverApp/handlers/punchIn.handler
+    events:
+      - http:
+          path: ${self:custom.apiPrefix}/driver/attendance/punch-in
+          method: post
+          cors: true
+          authorizer:
+            name: verifyToken
+            type: token
+            identitySource: method.request.header.x-access-token
+
+  driverPunchOut:
+    handler: src/modules/driverApp/handlers/punchOut.handler
+    events:
+      - http:
+          path: ${self:custom.apiPrefix}/driver/attendance/punch-out
+          method: post
+          cors: true
+          authorizer:
+            name: verifyToken
+            type: token
+            identitySource: method.request.header.x-access-token
+
+  driverSchedules:
+    handler: src/modules/driverApp/handlers/getSchedules.handler
+    events:
+      - http:
+          path: ${self:custom.apiPrefix}/driver/schedules
+          method: get
+          cors: true
+          authorizer:
+            name: verifyToken
+            type: token
+            identitySource: method.request.header.x-access-token
+
+  startTrip:
+    handler: src/modules/driverApp/handlers/startTrip.handler
+    events:
+      - http:
+          path: ${self:custom.apiPrefix}/driver/trips/{id}/start
+          method: post
+          cors: true
+          authorizer:
+            name: verifyToken
+            type: token
+            identitySource: method.request.header.x-access-token
+
+  endTrip:
+    handler: src/modules/driverApp/handlers/endTrip.handler
+    events:
+      - http:
+          path: ${self:custom.apiPrefix}/driver/trips/{id}/end
+          method: post
+          cors: true
+          authorizer:
+            name: verifyToken
+            type: token
+            identitySource: method.request.header.x-access-token
+
+  # Manager Level APIs
+  getOngoingTrips:
+    handler: src/modules/driverApp/handlers/getOngoingTrips.handler
+    events:
+      - http:
+          path: ${self:custom.apiPrefix}/trips/ongoing
+          method: get
+          cors: true
+          authorizer:
+            name: verifyToken
+            type: token
+            identitySource: method.request.header.x-access-token
+
+  getDriversStatus:
+    handler: src/modules/driverApp/handlers/getDriversStatus.handler
+    events:
+      - http:
+          path: ${self:custom.apiPrefix}/drivers/status
+          method: get
+          cors: true
+          authorizer:
+            name: verifyToken
+            type: token
+            identitySource: method.request.header.x-access-token
+
+  getPunchStatus:
+    handler: src/modules/driverApp/handlers/getPunchStatus.handler
+    events:
+      - http:
+          path: ${self:custom.apiPrefix}/driver/attendance/status
+          method: get
+          cors: true
+          authorizer:
+            name: verifyToken
+            type: token
+            identitySource: method.request.header.x-access-token
+
+  getNotificationSettings:
+    handler: src/modules/notificationSettings/handlers/getSettings.handler
+    events:
+      - http:
+          path: ${self:custom.apiPrefix}/notification-settings
+          method: get
+          cors: true
+          authorizer:
+            name: verifyToken
+            type: token
+            identitySource: method.request.header.x-access-token
+
+  updateNotificationSettings:
+    handler: src/modules/notificationSettings/handlers/updateSettings.handler
+    events:
+      - http:
+          path: ${self:custom.apiPrefix}/notification-settings
+          method: put
+          cors: true
+          authorizer:
+            name: verifyToken
+            type: token
+            identitySource: method.request.header.x-access-token
+
+  resetSuperAdminSettings:
+    handler: src/modules/notificationSettings/handlers/resetSuperAdminSettings.handler
+    events:
+      - http:
+          path: ${self:custom.apiPrefix}/notification-settings/super-admin/reset
+          method: post
+          cors: true
+          authorizer:
+            name: verifyToken
+            type: token
+            identitySource: method.request.header.x-access-token
+
+  getNotifications:
+    handler: src/modules/notificationHistory/handlers/getNotifications.handler
+    events:
+      - http:
+          path: ${self:custom.apiPrefix}/notifications
+          method: get
+          cors: true
+          authorizer:
+            name: verifyToken
+            type: token
+            identitySource: method.request.header.x-access-token
+
+  getUnreadCount:
+    handler: src/modules/notificationHistory/handlers/getUnreadCount.handler
+    events:
+      - http:
+          path: ${self:custom.apiPrefix}/notifications/unread-count
+          method: get
+          cors: true
+          authorizer:
+            name: verifyToken
+            type: token
+            identitySource: method.request.header.x-access-token
+
+  markAsRead:
+    handler: src/modules/notificationHistory/handlers/markAsRead.handler
+    events:
+      - http:
+          path: ${self:custom.apiPrefix}/notifications/mark-read
+          method: post
+          cors: true
+          authorizer:
+            name: verifyToken
+            type: token
+            identitySource: method.request.header.x-access-token
+
+  checkAvailability:
+    handler: src/modules/tripSchedule/handlers/checkAvailability.handler
+    events:
+      - http:
+          path: ${self:custom.apiPrefix}/trip-schedules/check-availability
+          method: post
+          cors: true
+          authorizer:
+            name: verifyToken
+            type: token
+            identitySource: method.request.header.x-access-token
+
+  checkAllAvailability:
+    handler: src/modules/tripSchedule/handlers/checkAllAvailability.handler
+    events:
+      - http:
+          path: ${self:custom.apiPrefix}/trip-schedules/check-all-availability
+          method: post
+          cors: true
+          authorizer:
+            name: verifyToken
+            type: token
+            identitySource: method.request.header.x-access-token
+
+  getDashboardCounts:
+    handler: src/modules/dashboard/handlers/getDashboardCounts.handler
+    events:
+      - http:
+          path: ${self:custom.apiPrefix}/dashboard/counts
+          method: get
+          cors: true
+          authorizer:
+            name: verifyToken
+            type: token
+            identitySource: method.request.header.x-access-token
+
+resources:
+  Resources:
+    # Custom API Gateway configuration
+    ApiGatewayRestApi:
+      Type: AWS::ApiGateway::RestApi
+      Properties:
+        Name: ${self:service}
+        EndpointConfiguration:
+          Types:
+            - REGIONAL
+    
+    # CORS configuration
+    GatewayResponseDefault4XX:
+      Type: AWS::ApiGateway::GatewayResponse
+      Properties:
+        ResponseParameters:
+          gatewayresponse.header.Access-Control-Allow-Origin: "'*'"
+          gatewayresponse.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-Amz-User-Agent,x-access-token'"
+          gatewayresponse.header.Access-Control-Allow-Methods: "'GET,POST,OPTIONS'"
+        ResponseType: DEFAULT_4XX
+        RestApiId:
+          Ref: ApiGatewayRestApi
+    
+    GatewayResponseDefault5XX:
+      Type: AWS::ApiGateway::GatewayResponse
+      Properties:
+        ResponseParameters:
+          gatewayresponse.header.Access-Control-Allow-Origin: "'*'"
+          gatewayresponse.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-Amz-User-Agent,x-access-token'"
+          gatewayresponse.header.Access-Control-Allow-Methods: "'GET,POST,OPTIONS'"
+        ResponseType: DEFAULT_5XX
+        RestApiId:
+          Ref: ApiGatewayRestApi
+          
+  # Output the API Gateway URL
+  Outputs:
+    ApiGatewayUrl:
+      Description: "API Gateway URL"
+      Value:
+        Fn::Join:
+          - ""
+          - - "https://"
+            - Ref: ApiGatewayRestApi
+            - ".execute-api.${self:provider.region}.amazonaws.com" 

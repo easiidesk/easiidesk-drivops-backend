@@ -4,20 +4,17 @@ const yup = require('yup');
  * Create vehicle validation schema
  */
 const createVehicleSchema = yup.object().shape({
-  make: yup.string().required('Make is required'),
-  model: yup.string().required('Model is required'),
+  name: yup.string().required('Name is required'),
   year: yup.number()
-    .required('Year is required')
+    .optional()
     .min(1900, 'Year must be at least 1900')
     .max(new Date().getFullYear() + 1, 'Year cannot be in the future'),
-  licensePlate: yup.string().required('License plate is required'),
-  vin: yup.string().required('VIN is required'),
+  licensePlate: yup.string().optional(),
   type: yup.string()
-    .oneOf(['sedan', 'suv', 'truck', 'van', 'bus'], 'Invalid vehicle type')
-    .required('Vehicle type is required'),
+    .oneOf(['car', 'truck'], 'Invalid vehicle type')
+    .optional(),
   capacity: yup.number()
-    .required('Capacity is required')
-    .min(1, 'Capacity must be at least 1'),
+    .optional(),
   color: yup.string().optional(),
   status: yup.string()
     .oneOf(['active', 'maintenance', 'retired'], 'Invalid status')
@@ -25,8 +22,8 @@ const createVehicleSchema = yup.object().shape({
   mileage: yup.number()
     .min(0, 'Mileage cannot be negative')
     .default(0),
-  registrationExpiry: yup.date().required('Registration expiry date is required'),
-  insuranceExpiry: yup.date().required('Insurance expiry date is required'),
+  registrationExpiry: yup.date().optional(),
+  insuranceExpiry: yup.date().optional(),
   lastMaintenanceDate: yup.date().nullable(),
   nextMaintenanceDate: yup.date().nullable(),
   assignedDriver: yup.string().nullable()
@@ -36,21 +33,19 @@ const createVehicleSchema = yup.object().shape({
  * Update vehicle validation schema
  */
 const updateVehicleSchema = yup.object().shape({
-  make: yup.string().optional(),
-  model: yup.string().optional(),
+  name: yup.string().required('Name is required'),
   year: yup.number()
     .optional()
     .min(1900, 'Year must be at least 1900')
     .max(new Date().getFullYear() + 1, 'Year cannot be in the future'),
-  licensePlate: yup.string().optional(),
-  vin: yup.string().optional(),
+  licensePlate: yup.string().optional().nullable(),
   type: yup.string()
-    .oneOf(['sedan', 'suv', 'truck', 'van', 'bus'], 'Invalid vehicle type')
+    .oneOf(['car', 'van', 'truck',], 'Invalid vehicle type')
     .optional(),
   capacity: yup.number()
     .optional()
     .min(1, 'Capacity must be at least 1'),
-  color: yup.string().optional(),
+  color: yup.string().optional().nullable(),
   status: yup.string()
     .oneOf(['active', 'maintenance', 'retired'], 'Invalid status')
     .optional(),

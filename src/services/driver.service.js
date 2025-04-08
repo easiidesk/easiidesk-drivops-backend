@@ -28,7 +28,7 @@ const getDrivers = async (filters = {}, options = {}) => {
   // Build the query
   const driverQuery = Driver.find(queryFilters)
     .populate('user', 'name email phone role')
-    .populate('vehicle', 'make model licensePlate')
+    .populate('vehicle', 'model licensePlate')
     .sort(queryOptions.sort)
     .skip(skip)
     .limit(queryOptions.limit);
@@ -56,7 +56,7 @@ const getDrivers = async (filters = {}, options = {}) => {
 const getDriverById = async (id) => {
   return await Driver.findOne({ _id: id, isActive: true, deletedAt: null })
     .populate('user', 'name email phone role')
-    .populate('vehicle', 'make model licensePlate type year color');
+    .populate('vehicle', 'model licensePlate type year color');
 };
 
 /**
@@ -67,7 +67,7 @@ const getDriverById = async (id) => {
 const getDriverByUserId = async (userId) => {
   return await Driver.findOne({ user: userId, isActive: true, deletedAt: null })
     .populate('user', 'name email phone role')
-    .populate('vehicle', 'make model licensePlate type year color');
+    .populate('vehicle', 'model licensePlate type year color');
 };
 
 /**

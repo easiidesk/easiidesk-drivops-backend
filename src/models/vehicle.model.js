@@ -1,40 +1,25 @@
 const mongoose = require('mongoose');
 
 const vehicleSchema = new mongoose.Schema({
-  make: {
+  name: {
     type: String,
-    required: true,
-    trim: true
-  },
-  model: {
-    type: String,
-    required: true,
-    trim: true
+    trim: true,
+    required: true
   },
   year: {
-    type: Number,
-    required: true
+    type: Number
   },
   licensePlate: {
     type: String,
-    required: true,
-    unique: true,
-    trim: true
-  },
-  vin: {
-    type: String,
-    required: true,
     unique: true,
     trim: true
   },
   type: {
     type: String,
-    enum: ['sedan', 'suv', 'truck', 'van', 'bus'],
-    required: true
+    enum: ['car', 'truck', 'van'],
   },
   capacity: {
     type: Number,
-    required: true,
     min: 1
   },
   color: {
@@ -51,12 +36,10 @@ const vehicleSchema = new mongoose.Schema({
     default: 0
   },
   registrationExpiry: {
-    type: Date,
-    required: true
+    type: Date
   },
   insuranceExpiry: {
-    type: Date,
-    required: true
+    type: Date
   },
   lastMaintenanceDate: {
     type: Date
@@ -95,8 +78,8 @@ const vehicleSchema = new mongoose.Schema({
 });
 
 // Create indexes for common queries
+vehicleSchema.index({ name: 1 });
 vehicleSchema.index({ licensePlate: 1 });
-vehicleSchema.index({ vin: 1 });
 vehicleSchema.index({ status: 1 });
 vehicleSchema.index({ assignedDriver: 1 });
 vehicleSchema.index({ deletedAt: 1 });

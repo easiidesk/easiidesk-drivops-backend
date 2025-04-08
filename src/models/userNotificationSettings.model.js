@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { toJSON, paginate } = require('./plugins');
 
 const adminNotificationSchema = {
   receiveNotification: true,
@@ -25,38 +26,51 @@ const driverNotificationSchema = {
   receiveReminderForPunchOut: true,
 };
 
-const userNotificationSettingsSchema = new mongoose.Schema({
-  userId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true,
-    unique: true
+/**
+ * User Notification Settings schema
+ * @private
+ */
+const userNotificationSettingsSchema = mongoose.Schema(
+  {
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: true,
+      unique: true
+    },
+    settings: {
+      type: mongoose.Schema.Types.Mixed,
+      required: true
+    },
+    isActive: {
+      type: Boolean,
+      default: true
+    },
+    deletedAt: {
+      type: Date,
+      default: null
+    }
   },
-  settings: {
-    type: mongoose.Schema.Types.Mixed,
-    required: true
-  },
-  isActive: {
-    type: Boolean,
-    default: true
-  },
-  createdAt: {
-    type: Date,
-    default: Date.now
-  },
-  updatedAt: {
-    type: Date,
-    default: Date.now
-  },
-  deletedAt: {
-    type: Date,
-    default: null
+  {
+    timestamps: true
   }
-});
+);
 
+// Add indexes for common queries
+userNotificationSettingsSchema.index({ userId: 1 });
+userNotificationSettingsSchema.index({ isActive: 1 });
+
+// Add plugins
+userNotificationSettingsSchema.plugin(toJSON);
+userNotificationSettingsSchema.plugin(paginate);
+
+/**
+ * @typedef UserNotificationSettings
+ */
+const UserNotificationSettings = mongoose.model('UserNotificationSettings', userNotificationSettingsSchema);
 
 module.exports = {
-  UserNotificationSettings: mongoose.model('UserNotificationSettings', userNotificationSettingsSchema),
+  UserNotificationSettings,
   adminNotificationSchema,
   requestorNotificationSchema,
   driverNotificationSchema
