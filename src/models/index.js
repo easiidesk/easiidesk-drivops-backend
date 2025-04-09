@@ -11,6 +11,7 @@ const User = require('./user.model');
 const Vehicle = require('./vehicle.model');
 const Driver = require('./driver.model');
 const Trip = require('./trip.model');
+const TripRequestHistory = require('./tripRequestHistory.model');
 
 module.exports = {
   User,
@@ -22,5 +23,6 @@ module.exports = {
   TripSchedule,
   NotificationHistory,
   UserNotificationSettings,
-  TripPurpose
+  TripPurpose,
+  TripRequestHistory
 };

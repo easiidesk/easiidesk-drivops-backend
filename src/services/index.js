@@ -9,6 +9,7 @@ module.exports = {
   tripService: require('./trip.service'),
   maintenanceService: require('./maintenance.service'),
   tripRequestService: require('./tripRequest.service'),
+  tripRequestHistoryService: require('./tripRequestHistory.service'),
   tripScheduleService: require('./tripSchedule.service'),
   notificationHistoryService: require('./notificationHistory.service'),
   notificationSettingsService: require('./notificationSettings.service'),

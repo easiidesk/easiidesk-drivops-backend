@@ -1,5 +1,5 @@
 const semver = require('semver');
-const env = require('../../config/env');
+const {APP_VERSIONS}  = require('../../common/constants/version_constants');
 
 /**
  * Extract app version and platform from request headers
@@ -7,17 +7,8 @@ const env = require('../../config/env');
  * @returns {Object} App version information
  */
 const getVersionFromRequest = (req) => {
-  const userAgent = req.headers['user-agent'] || '';
+  const platform = req.headers['platform'] || 'web';
   const appVersion = req.headers['app-version'] || '';
-  
-  let platform = 'web';
-  
-  // Detect platform from user agent
-  if (/android/i.test(userAgent)) {
-    platform = 'android';
-  } else if (/iphone|ipad|ipod/i.test(userAgent)) {
-    platform = 'ios';
-  }
   
   return {
     version: appVersion,
@@ -31,10 +22,7 @@ const getVersionFromRequest = (req) => {
  * @returns {boolean} True if version is valid
  */
 const checkVersionFromRequest = (req) => {
-  // Skip version check in development mode
-  if (env.NODE_ENV === 'development' && !env.FORCE_VERSION_CHECK) {
-    return true;
-  }
+
   
   // Get version info from request
   const { version, platform } = getVersionFromRequest(req);
@@ -46,19 +34,28 @@ const checkVersionFromRequest = (req) => {
   
   // Get minimum version for platform
   let minVersion;
+  let currentVersion;
+  let releaseNotes;
   switch (platform) {
     case 'android':
-      minVersion = env.MINIMUM_VERSION_ANDROID;
+      minVersion = APP_VERSIONS.android.minimumVersion;
+      currentVersion = APP_VERSIONS.android.currentVersion;
+      releaseNotes = APP_VERSIONS.android.releaseNotes;
       break;
     case 'ios':
-      minVersion = env.MINIMUM_VERSION_IOS;
+      minVersion = APP_VERSIONS.ios.minimumVersion;
+      currentVersion = APP_VERSIONS.ios.currentVersion;
+      releaseNotes = APP_VERSIONS.ios.releaseNotes;
       break;
-    default:
-      minVersion = env.MINIMUM_VERSION_WEB;
   }
   
   // Check version
-  return minVersion ? semver.gte(version, minVersion) : true;
+  return {
+    isValid: minVersion ? semver.gte(version, minVersion) : true,
+    minimumVersion: minVersion,
+    currentVersion: currentVersion,
+    releaseNotes: releaseNotes,
+  }
 };
 
 module.exports = {

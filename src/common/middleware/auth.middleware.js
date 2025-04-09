@@ -79,33 +79,8 @@ const authorize = (roles = []) => {
   };
 };
 
-/**
- * Version check middleware
- * @param {Object} req - Express request object
- * @param {Object} res - Express response object
- * @param {Function} next - Express next function
- */
-const checkVersion = (req, res, next) => {
-  // Extract version from headers
-  const appVersion = req.headers['app-version'];
-  
-  if (!appVersion) {
-    // No version header, proceed
-    return next();
-  }
-  
-  // Import version utility
-  const { isValidVersion } = require('../utils/version');
-  
-  if (!isValidVersion(appVersion)) {
-    return res.status(426).json(errorResponse('App version outdated. Please update your application.', 426));
-  }
-  
-  next();
-};
 
 module.exports = {
   verifyToken,
-  authorize,
-  checkVersion
+  authorize
 }; 

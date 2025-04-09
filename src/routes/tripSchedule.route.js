@@ -2,7 +2,7 @@ const express = require('express');
 const { validateRequest, validateParams, validateQuery } = require('../middleware/validate.middleware');
 const tripScheduleController = require('../controllers/tripSchedule.controller');
 const tripScheduleValidation = require('../validators/tripSchedule.validator');
-const { verifyToken } = require('../middleware/auth.middleware');
+const { verifyToken, authorize } = require('../middleware/auth.middleware');
 
 const router = express.Router();
 
@@ -88,7 +88,7 @@ router.use(verifyToken);
  *       "403":
  *         $ref: '#/components/responses/Forbidden'
  */
-router.get('/', validateQuery(tripScheduleValidation.getSchedules), tripScheduleController.getSchedules);
+router.get('/', authorize(['scheduler','admin', 'super-admin']), validateQuery(tripScheduleValidation.getSchedules), tripScheduleController.getSchedules);
 
 /**
  * @swagger
@@ -120,7 +120,7 @@ router.get('/', validateQuery(tripScheduleValidation.getSchedules), tripSchedule
  *       "404":
  *         $ref: '#/components/responses/NotFound'
  */
-router.get('/:id', validateParams(tripScheduleValidation.getSchedule), tripScheduleController.getSchedule);
+router.get('/:id', authorize(['scheduler','admin', 'super-admin']), validateParams(tripScheduleValidation.getSchedule), tripScheduleController.getSchedule);
 
 /**
  * @swagger
@@ -151,7 +151,7 @@ router.get('/:id', validateParams(tripScheduleValidation.getSchedule), tripSched
  *       "403":
  *         $ref: '#/components/responses/Forbidden'
  */
-router.post('/', validateRequest(tripScheduleValidation.createSchedule), tripScheduleController.createSchedule);
+router.post('/', authorize(['scheduler','admin', 'super-admin']), validateRequest(tripScheduleValidation.createSchedule), tripScheduleController.createSchedule);
 
 /**
  * @swagger
@@ -192,6 +192,7 @@ router.post('/', validateRequest(tripScheduleValidation.createSchedule), tripSch
  *         $ref: '#/components/responses/NotFound'
  */
 router.put('/:id', 
+  authorize(['scheduler','admin', 'super-admin']),
   validateParams(tripScheduleValidation.updateSchedule),
   validateRequest(tripScheduleValidation.updateSchedule),
   tripScheduleController.updateSchedule
@@ -223,7 +224,7 @@ router.put('/:id',
  *       "404":
  *         $ref: '#/components/responses/NotFound'
  */
-router.delete('/:id', validateParams(tripScheduleValidation.deleteSchedule), tripScheduleController.deleteSchedule);
+router.delete('/:id', authorize(['scheduler','admin', 'super-admin']), validateParams(tripScheduleValidation.deleteSchedule), tripScheduleController.deleteSchedule);
 
 /**
  * @swagger
@@ -261,6 +262,7 @@ router.delete('/:id', validateParams(tripScheduleValidation.deleteSchedule), tri
  */
 router.post(
   '/check-availability',
+  authorize(['scheduler','admin', 'super-admin']),
   validateRequest(tripScheduleValidation.checkAvailability),
   tripScheduleController.checkAvailability
 );

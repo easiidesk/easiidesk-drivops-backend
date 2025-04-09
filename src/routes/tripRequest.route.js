@@ -1,8 +1,9 @@
 const express = require('express');
 const { validateRequest, validateParams, validateQuery } = require('../middleware/validate.middleware');
 const tripRequestController = require('../controllers/tripRequest.controller');
+const tripRequestHistoryController = require('../controllers/tripRequestHistory.controller');
 const tripRequestValidation = require('../validators/tripRequest.validator');
-const { verifyToken } = require('../middleware/auth.middleware');
+const { verifyToken, authorize } = require('../middleware/auth.middleware');
 
 const router = express.Router();
 
@@ -84,7 +85,7 @@ router.use(verifyToken);
  *       "403":
  *         $ref: '#/components/responses/Forbidden'
  */
-router.get('/', validateQuery(tripRequestValidation.getTripRequests), tripRequestController.getTripRequests);
+router.get('/', authorize(['requestor','scheduler','cost-analyst','admin', 'super-admin']), validateQuery(tripRequestValidation.getTripRequests), tripRequestController.getTripRequests);
 
 /**
  * @swagger
@@ -116,7 +117,7 @@ router.get('/', validateQuery(tripRequestValidation.getTripRequests), tripReques
  *       "404":
  *         $ref: '#/components/responses/NotFound'
  */
-router.get('/:id', validateParams(tripRequestValidation.getTripRequest), tripRequestController.getTripRequest);
+router.get('/:id', authorize(['requestor','scheduler','cost-analyst','admin', 'super-admin']), validateParams(tripRequestValidation.getTripRequest), tripRequestController.getTripRequest);
 
 /**
  * @swagger
@@ -147,7 +148,7 @@ router.get('/:id', validateParams(tripRequestValidation.getTripRequest), tripReq
  *       "403":
  *         $ref: '#/components/responses/Forbidden'
  */
-router.post('/', validateRequest(tripRequestValidation.createTripRequest), tripRequestController.createTripRequest);
+router.post('/', authorize(['requestor','scheduler','admin', 'super-admin']), validateRequest(tripRequestValidation.createTripRequest), tripRequestController.createTripRequest);
 
 /**
  * @swagger
@@ -188,6 +189,7 @@ router.post('/', validateRequest(tripRequestValidation.createTripRequest), tripR
  *         $ref: '#/components/responses/NotFound'
  */
 router.put('/:id', 
+  authorize(['requestor','scheduler','admin', 'super-admin']),
   validateParams(tripRequestValidation.updateTripRequest),
   validateRequest(tripRequestValidation.updateTripRequest),
   tripRequestController.updateTripRequest
@@ -219,6 +221,9 @@ router.put('/:id',
  *       "404":
  *         $ref: '#/components/responses/NotFound'
  */
-router.delete('/:id', validateParams(tripRequestValidation.deleteTripRequest), tripRequestController.deleteTripRequest);
+router.delete('/:id', authorize(['requestor','scheduler','admin', 'super-admin']), validateParams(tripRequestValidation.deleteTripRequest), tripRequestController.deleteTripRequest);
+
+// Get trip request history
+router.get('/:id/history', authorize(['requestor','scheduler','cost-analyst','admin', 'super-admin']), validateParams(tripRequestValidation.getTripRequest), tripRequestHistoryController.getTripRequestHistory);
 
 module.exports = router; 

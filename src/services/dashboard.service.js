@@ -22,7 +22,7 @@ const getDashboardCounts = async () => {
     ] = await Promise.all([
       // Get active trips to find busy vehicles
       TripSchedule.find(
-        { isActive: true, deletedAt: null },
+        { isActive: true, deletedAt: null , status: 'in progress'},
         { vehicleId: 1 }
       ),
       
@@ -54,11 +54,7 @@ const getDashboardCounts = async () => {
     const busyVehicleIds = new Set(activeTrips.map(trip => trip.vehicleId.toString()));
     const availableVehiclesCount = totalActiveVehiclesCount - busyVehicleIds.size;
 
-    // Calculate maintenance vehicles
-    const maintenanceVehiclesCount = await Vehicle.countDocuments({
-      status: 'maintenance',
-      deletedAt: null,
-    });
+
 
     return {
       activeTrips: activeTripsCount,
@@ -66,7 +62,6 @@ const getDashboardCounts = async () => {
       driversOnDuty: driversOnDutyCount,
       availableVehicles: availableVehiclesCount,
       totalActiveVehicles: totalActiveVehiclesCount,
-      maintenanceVehicles: maintenanceVehiclesCount
     };
   } catch (error) {
     console.error('Error fetching dashboard counts:', error);

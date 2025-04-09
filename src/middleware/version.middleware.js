@@ -16,11 +16,10 @@ const versionCheck = (req, res, next) => {
   }
   
   // Check app version
-  if (!checkVersionFromRequest(req)) {
-    return res.status(426).json(
-      errorResponse('App version outdated. Please update your application.', 426)
-    );
-  }
+  const { isValid, minimumVersion, currentVersion, releaseNotes } = checkVersionFromRequest(req);
+  res.setHeader('minimum-version', minimumVersion);
+  res.setHeader('current-version', currentVersion);
+  res.setHeader('release-notes', releaseNotes);
   
   next();
 };

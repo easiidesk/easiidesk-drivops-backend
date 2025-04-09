@@ -88,7 +88,7 @@ const createTripRequest = catchAsync(async (req, res) => {
  * @route PUT /trip-requests/:id
  */
 const updateTripRequest = catchAsync(async (req, res) => {
-  const tripRequest = await tripRequestService.updateTripRequest(req.params.id, req.body);
+  const tripRequest = await tripRequestService.updateTripRequest(req.params.id, req.body, req.user._id);
   res.send(tripRequest);
 });
 
