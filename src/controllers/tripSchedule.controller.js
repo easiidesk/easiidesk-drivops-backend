@@ -1,4 +1,4 @@
-const httpStatus = require('http-status');
+const {status} = require('http-status');
 const catchAsync = require('../utils/catchAsync');
 const { tripScheduleService, tripRequestService } = require('../services');
 const ApiError = require('../utils/ApiError');
@@ -50,7 +50,7 @@ const getSchedules = catchAsync(async (req, res) => {
 const getSchedule = catchAsync(async (req, res) => {
   const tripSchedule = await tripScheduleService.getScheduleById(req.params.id);
   if (!tripSchedule) {
-    throw new ApiError(httpStatus.NOT_FOUND, 'Trip schedule not found');
+    throw new ApiError(status.NOT_FOUND, 'Trip schedule not found');
   }
   res.send(tripSchedule);
 });
@@ -60,30 +60,6 @@ const getSchedule = catchAsync(async (req, res) => {
  * @route POST /schedules
  */
 const createSchedule = catchAsync(async (req, res) => {
-  // Check availability first
-  const firstDestination = req.body.destinations[0];
-  const lastDestination = req.body.destinations[req.body.destinations.length - 1];
-  
-  const startTime = new Date(firstDestination.tripStartTime);
-  const endTime = lastDestination.tripApproxArrivalTime 
-    ? new Date(lastDestination.tripApproxArrivalTime)
-    : new Date(startTime.getTime() + 3600000); // Default to 1 hour later if not specified
-  
-  const availabilityCheck = await tripScheduleService.checkAvailability(
-    req.body.vehicleId,
-    req.body.driverId,
-    startTime,
-    endTime
-  );
-  
-  if (!availabilityCheck.isAvailable) {
-    throw new ApiError(
-      httpStatus.BAD_REQUEST,
-      'Vehicle or driver is not available for the requested time period',
-      { conflictingSchedules: availabilityCheck.conflictingSchedules }
-    );
-  }
-  
   // Create schedule
   const tripSchedule = await tripScheduleService.createSchedule(req.body);
   
@@ -94,7 +70,7 @@ const createSchedule = catchAsync(async (req, res) => {
     }
   }
   
-  res.status(httpStatus.CREATED).send(tripSchedule);
+  res.status(status.CREATED).send(tripSchedule);
 });
 
 /**
@@ -102,38 +78,6 @@ const createSchedule = catchAsync(async (req, res) => {
  * @route PUT /schedules/:id
  */
 const updateSchedule = catchAsync(async (req, res) => {
-  // If destinations are being changed, check availability
-  if (req.body.destinations || req.body.driverId || req.body.vehicleId) {
-    const currentSchedule = await tripScheduleService.getScheduleById(req.params.id);
-    
-    const destinations = req.body.destinations || currentSchedule.destinations;
-    const firstDestination = destinations[0];
-    const lastDestination = destinations[destinations.length - 1];
-    
-    const startTime = new Date(firstDestination.tripStartTime);
-    const endTime = lastDestination.tripApproxArrivalTime 
-      ? new Date(lastDestination.tripApproxArrivalTime)
-      : new Date(startTime.getTime() + 3600000); // Default to 1 hour later
-    
-    const vehicleId = req.body.vehicleId || currentSchedule.vehicleId;
-    const driverId = req.body.driverId || currentSchedule.driverId;
-    
-    const availabilityCheck = await tripScheduleService.checkAvailability(
-      vehicleId,
-      driverId,
-      startTime,
-      endTime,
-      req.params.id // Exclude current schedule from availability check
-    );
-    
-    if (!availabilityCheck.isAvailable) {
-      throw new ApiError(
-        httpStatus.BAD_REQUEST,
-        'Vehicle or driver is not available for the requested time period',
-        { conflictingSchedules: availabilityCheck.conflictingSchedules }
-      );
-    }
-  }
   
   const tripSchedule = await tripScheduleService.updateSchedule(req.params.id, req.body);
   
@@ -170,7 +114,7 @@ const deleteSchedule = catchAsync(async (req, res) => {
   }
   
   await tripScheduleService.deleteSchedule(req.params.id, req.user._id);
-  res.status(httpStatus.NO_CONTENT).send();
+  res.status(status.NO_CONTENT).send();
 });
 
 /**

@@ -11,7 +11,6 @@ const maintenanceSchema = mongoose.Schema(
       type: mongoose.SchemaTypes.ObjectId,
       ref: 'Vehicle',
       required: true,
-      index: true
     },
     type: {
       type: String,

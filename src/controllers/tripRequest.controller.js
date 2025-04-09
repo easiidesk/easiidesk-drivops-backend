@@ -1,7 +1,8 @@
-const httpStatus = require('http-status');
+const {status} = require('http-status');
 const catchAsync = require('../utils/catchAsync');
 const { tripRequestService } = require('../services');
 const ApiError = require('../utils/ApiError');
+const { successResponse } = require('../common/responses/response.utils');
 
 /**
  * Get all trip requests with filtering and pagination
@@ -32,7 +33,13 @@ const getTripRequests = catchAsync(async (req, res) => {
   if (req.query.createdBy) {
     filter.createdBy = req.query.createdBy;
   }
-  
+
+  if (req.query.driverId) {
+    filter.driverId = req.query.driverId;
+  }
+  if (req.query.vehicleId) {
+    filter.requiredVehicle = { $in: req.query.vehicleId };
+  }
   const options = {
     sortBy: req.query.sortBy,
     limit: req.query.limit,
@@ -40,7 +47,19 @@ const getTripRequests = catchAsync(async (req, res) => {
   };
   
   const result = await tripRequestService.getTripRequests(filter, options);
-  res.send(result);
+  
+  // Format response according to required structure
+  const formattedResponse = {
+    data: result.results,
+    pagination: {
+      total: result.totalResults,
+      page: result.page,
+      limit: result.limit,
+      totalPages: result.totalPages
+    }
+  };
+  
+  res.send(formattedResponse);
 });
 
 /**
@@ -50,7 +69,7 @@ const getTripRequests = catchAsync(async (req, res) => {
 const getTripRequest = catchAsync(async (req, res) => {
   const tripRequest = await tripRequestService.getTripRequestById(req.params.id);
   if (!tripRequest) {
-    throw new ApiError(httpStatus.NOT_FOUND, 'Trip request not found');
+    throw new ApiError(status.NOT_FOUND, 'Trip request not found');
   }
   res.send(tripRequest);
 });
@@ -61,7 +80,7 @@ const getTripRequest = catchAsync(async (req, res) => {
  */
 const createTripRequest = catchAsync(async (req, res) => {
   const tripRequest = await tripRequestService.createTripRequest(req.body, req.user._id);
-  res.status(httpStatus.CREATED).send(tripRequest);
+  res.status(status.CREATED).send(tripRequest);
 });
 
 /**
@@ -79,7 +98,7 @@ const updateTripRequest = catchAsync(async (req, res) => {
  */
 const deleteTripRequest = catchAsync(async (req, res) => {
   await tripRequestService.deleteTripRequest(req.params.id, req.user._id);
-  res.status(httpStatus.NO_CONTENT).send();
+  res.status(status.NO_CONTENT).send();
 });
 
 module.exports = {

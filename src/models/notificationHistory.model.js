@@ -35,7 +35,8 @@ const notificationHistorySchema = mongoose.Schema(
     }
   },
   {
-    timestamps: true
+    timestamps: true,
+    collection: 'notificationHistories'
   }
 );
 

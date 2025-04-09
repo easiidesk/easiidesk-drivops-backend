@@ -1,4 +1,4 @@
-const httpStatus = require('http-status');
+const {status} = require('http-status');
 const catchAsync = require('../utils/catchAsync');
 const { maintenanceService } = require('../services');
 const ApiError = require('../utils/ApiError');
@@ -8,7 +8,7 @@ const ApiError = require('../utils/ApiError');
  */
 const createMaintenance = catchAsync(async (req, res) => {
   const maintenance = await maintenanceService.createMaintenance(req.body, req.user._id);
-  res.status(httpStatus.CREATED).send(maintenance);
+  res.status(status.CREATED).send(maintenance);
 });
 
 /**
@@ -56,7 +56,7 @@ const updateMaintenance = catchAsync(async (req, res) => {
  */
 const updateMaintenanceStatus = catchAsync(async (req, res) => {
   if (!req.body.status) {
-    throw new ApiError(httpStatus.BAD_REQUEST, 'Status is required');
+    throw new ApiError(status.BAD_REQUEST, 'Status is required');
   }
   
   const maintenance = await maintenanceService.updateMaintenanceStatus(
@@ -72,7 +72,7 @@ const updateMaintenanceStatus = catchAsync(async (req, res) => {
  */
 const addMaintenanceDocument = catchAsync(async (req, res) => {
   if (!req.body.document) {
-    throw new ApiError(httpStatus.BAD_REQUEST, 'Document data is required');
+    throw new ApiError(status.BAD_REQUEST, 'Document data is required');
   }
   
   const maintenance = await maintenanceService.addMaintenanceDocument(
@@ -88,7 +88,7 @@ const addMaintenanceDocument = catchAsync(async (req, res) => {
  */
 const deleteMaintenance = catchAsync(async (req, res) => {
   await maintenanceService.deleteMaintenance(req.params.maintenanceId);
-  res.status(httpStatus.NO_CONTENT).send();
+  res.status(status.NO_CONTENT).send();
 });
 
 /**

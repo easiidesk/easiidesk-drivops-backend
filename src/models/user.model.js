@@ -13,15 +13,15 @@ const userSchema = new mongoose.Schema({
   email: {
     type: String,
     required: true,
-    unique: true,
     trim: true,
-    lowercase: true
+    lowercase: true,
+    unique: true
   },
   phone: {
     type: String,
     required: true,
-    unique: true,
-    trim: true
+    trim: true,
+    unique: true
   },
   password: {
     type: String,
@@ -30,7 +30,7 @@ const userSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ['super-admin', 'admin', 'scheduler', 'requestor','cost-analyst','driver'],
+    enum: ['super-admin', 'admin', 'scheduler', 'requestor', 'cost-analyst', 'driver'],
     default: 'user'
   },
   fcmTokens: {
@@ -71,8 +71,11 @@ const userSchema = new mongoose.Schema({
     }
   },
   collection: 'users'
-}
-);
+});
+
+// Add compound index for soft delete and unique fields
+userSchema.index({ email: 1, deletedAt: 1 }, { unique: true, sparse: true });
+userSchema.index({ phone: 1, deletedAt: 1 }, { unique: true, sparse: true });
 
 /**
  * Hash password before saving

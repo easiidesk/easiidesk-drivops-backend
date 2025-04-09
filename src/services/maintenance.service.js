@@ -1,4 +1,4 @@
-const httpStatus = require('http-status');
+const { status } = require('http-status');
 const { Maintenance } = require('../models');
 const ApiError = require('../utils/ApiError');
 const { getPagination } = require('../utils/pagination');
@@ -30,7 +30,7 @@ const getMaintenanceById = async (id) => {
     .populate('updatedBy', 'name email');
   
   if (!maintenance) {
-    throw new ApiError(httpStatus.NOT_FOUND, 'Maintenance record not found');
+    throw new ApiError(status.NOT_FOUND, 'Maintenance record not found');
   }
   return maintenance;
 };

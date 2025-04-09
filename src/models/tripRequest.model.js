@@ -14,27 +14,16 @@ const tripRequestSchema = mongoose.Schema(
     },
     mapLink: {
       type: String,
-      trim: true,
-      validate: {
-        validator: function(v) {
-          try {
-            new URL(v);
-            return true;
-          } catch (e) {
-            return false;
-          }
-        },
-        message: 'Map link must be a valid URL'
-      }
+      trim: true
     },
     dateTime: {
       type: Date,
       required: true
     },
     purpose: {
-      type: String,
-      required: true,
-      trim: true
+      type: mongoose.SchemaTypes.ObjectId,
+      ref: 'TripPurpose',
+      required: true
     },
     jobCardId: {
       type: String,
@@ -42,8 +31,7 @@ const tripRequestSchema = mongoose.Schema(
     },
     noOfPeople: {
       type: Number,
-      required: true,
-      min: 1
+      required: true
     },
     requiredVehicle: {
       type: [{
@@ -63,7 +51,11 @@ const tripRequestSchema = mongoose.Schema(
       enum: ['pending', 'scheduled', 'cancelled'],
       default: 'pending'
     },
-    linkedTrip: {
+    cancelRemarks: {
+      type: String,
+      default: null
+    },
+    linkedTripId: {
       type: mongoose.SchemaTypes.ObjectId,
       ref: 'TripSchedule',
       default: null
@@ -94,6 +86,7 @@ tripRequestSchema.index({ status: 1 });
 tripRequestSchema.index({ dateTime: 1 });
 tripRequestSchema.index({ createdBy: 1 });
 tripRequestSchema.index({ deletedAt: 1 });
+tripRequestSchema.index({ linkedTripId: 1 });
 
 // Add plugins
 tripRequestSchema.plugin(toJSON);

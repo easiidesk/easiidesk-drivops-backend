@@ -57,7 +57,7 @@ router.use(verifyToken);
  *       401:
  *         description: Unauthorized
  */
-router.get('/', authorize(['admin', 'super-admin']), driverController.getDrivers);
+router.get('/', authorize(['requestor','scheduler','cost-analyst','admin', 'super-admin']), driverController.getDrivers);
 
 /**
  * @swagger

@@ -1,4 +1,4 @@
-const httpStatus = require('http-status');
+const { status } = require('http-status');
 const { NotificationHistory } = require('../models');
 const ApiError = require('../utils/ApiError');
 const { getPagination } = require('../utils/pagination');
@@ -77,7 +77,7 @@ const deleteNotification = async (notificationId) => {
   const notification = await NotificationHistory.findById(notificationId);
   
   if (!notification) {
-    throw new ApiError(httpStatus.NOT_FOUND, 'Notification not found');
+    throw new ApiError(status.NOT_FOUND, 'Notification not found');
   }
   
   notification.isActive = false;

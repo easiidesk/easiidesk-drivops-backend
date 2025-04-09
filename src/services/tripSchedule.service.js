@@ -1,7 +1,54 @@
-const httpStatus = require('http-status');
+const { status } = require('http-status');
 const { TripSchedule } = require('../models');
 const ApiError = require('../utils/ApiError');
 const { getPagination } = require('../utils/pagination');
+
+/**
+ * Format trip schedule data according to required structure
+ * @param {Object} schedule - Trip schedule document
+ * @returns {Object} Formatted trip schedule
+ */
+const formatTripSchedule = (schedule) => {
+  const formatted = {
+    id: schedule._id,
+    status: 'scheduled', // Since we're only getting active schedules
+    driver: schedule.driverId ? {
+      id: schedule.driverId._id,
+      name: schedule.driverId.name,
+      phone: schedule.driverId.phone,
+      email: schedule.driverId.email
+    } : null,
+    vehicle: schedule.vehicleId ? {
+      id: schedule.vehicleId._id,
+      name: schedule.vehicleId.name
+    } : null,
+    destinations: schedule.destinations.map(dest => ({
+      requestId: dest.requestId?._id || null,
+      destination: dest.requestId?.destination || null,
+      purpose: dest.requestId?.purpose ? {
+        id: dest.requestId.purpose._id,
+        name: dest.requestId.purpose.name,
+        jobCardNeeded: dest.requestId.purpose.jobCardNeeded
+      } : null,
+      tripStartTime: dest.tripStartTime,
+      tripApproxArrivalTime: dest.tripApproxArrivalTime,
+      tripPurposeTime: dest.tripPurposeTime,
+      jobCardId: dest.requestId?.jobCardId || null,
+      noOfPeople: dest.requestId?.noOfPeople || null,
+      createdBy: dest.requestId?.createdBy ? {
+        id: dest.requestId.createdBy._id,
+        name: dest.requestId.createdBy.name,
+        phone: dest.requestId.createdBy.phone
+      } : null
+    })),
+    tripStartTime: schedule.destinations[0]?.tripStartTime,
+    tripApproxReturnTime: schedule.destinations[schedule.destinations.length - 1]?.tripApproxArrivalTime,
+    createdAt: schedule.createdAt,
+    updatedAt: schedule.updatedAt
+  };
+
+  return formatted;
+};
 
 /**
  * Get all trip schedules with pagination
@@ -16,15 +63,41 @@ const getSchedules = async (filter = {}, options = {}) => {
   const defaultFilter = { isActive: true, deletedAt: null };
   const mergedFilter = { ...defaultFilter, ...filter };
   
-  return TripSchedule.paginate(mergedFilter, {
-    ...pagination,
-    populate: [
-      { path: 'driverId', select: 'name email phone' },
-      { path: 'vehicleId', select: 'name licensePlate' },
-      { path: 'destinations.requestId', select: 'destination purpose dateTime noOfPeople' },
-    ],
-    sort: options.sortBy ? options.sortBy : { createdAt: -1 }
-  });
+  const schedules = await TripSchedule.find(mergedFilter)
+    .populate('driverId', 'name email phone')
+    .populate('vehicleId', 'name')
+    .populate({
+      path: 'destinations.requestId',
+      select: 'destination purpose jobCardId noOfPeople createdBy',
+      populate: [
+        {
+          path: 'purpose',
+          select: 'name jobCardNeeded'
+        },
+        {
+          path: 'createdBy',
+          select: 'name phone'
+        }
+      ]
+    })
+    .sort(options.sortBy ? options.sortBy : { createdAt: -1 })
+    .skip(pagination.skip)
+    .limit(pagination.limit);
+
+  const total = await TripSchedule.countDocuments(mergedFilter);
+  
+  const formattedResults = schedules.map(formatTripSchedule);
+
+  return {
+    filters: { status: 'scheduled' },
+    data: formattedResults,
+    pagination: {
+      page: pagination.page,
+      limit: pagination.limit,
+      totalResults: total,
+      totalPages: Math.ceil(total / pagination.limit)
+    }
+  };
 };
 
 /**
@@ -35,14 +108,27 @@ const getSchedules = async (filter = {}, options = {}) => {
 const getScheduleById = async (id) => {
   const schedule = await TripSchedule.findOne({ _id: id, isActive: true, deletedAt: null })
     .populate('driverId', 'name email phone')
-    .populate('vehicleId', 'name licensePlate year')
-    .populate('destinations.requestId', 'destination purpose dateTime noOfPeople');
+    .populate('vehicleId', 'name')
+    .populate({
+      path: 'destinations.requestId',
+      select: 'destination purpose jobCardId noOfPeople createdBy',
+      populate: [
+        {
+          path: 'purpose',
+          select: 'name jobCardNeeded'
+        },
+        {
+          path: 'createdBy',
+          select: 'name phone'
+        }
+      ]
+    });
   
   if (!schedule) {
-    throw new ApiError(httpStatus.NOT_FOUND, 'Trip schedule not found');
+    throw new ApiError(status.NOT_FOUND, 'Trip schedule not found');
   }
   
-  return schedule;
+  return formatTripSchedule(schedule);
 };
 
 /**

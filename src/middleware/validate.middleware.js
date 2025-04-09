@@ -128,6 +128,11 @@ const validateQuery = (schema) => {
       
       // Check if this is a Joi schema (has 'query' property)
       if (schema.query) {
+        Object.keys(req.query).forEach(key => {
+          if(req.query[key].split(',').length !== 1) {
+            req.query[key] = req.query[key].split(',');
+          }
+        });
         const { error, value } = schema.query.validate(req.query, {
           abortEarly: false,
           stripUnknown: true

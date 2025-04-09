@@ -12,12 +12,7 @@ mongoose.set('strictQuery', false);
  */
 const connect = async () => {
   try {
-    const options = {
-      useNewUrlParser: true,
-      useUnifiedTopology: true
-    };
-    
-    await mongoose.connect(env.MONGODB_URI, options);
+    await mongoose.connect(env.MONGODB_URI);
     
     // Log successful connection
     console.log('MongoDB connected successfully');

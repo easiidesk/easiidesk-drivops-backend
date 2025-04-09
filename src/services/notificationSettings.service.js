@@ -1,48 +1,44 @@
 const httpStatus = require('http-status');
 const { UserNotificationSettings, adminNotificationSchema, requestorNotificationSchema, driverNotificationSchema } = require('../models/userNotificationSettings.model');
+const { User } = require('../models');
 const ApiError = require('../utils/ApiError');
 
 /**
- * Get notification settings for a user
- * @param {ObjectId} userId
- * @returns {Promise<UserNotificationSettings>}
+ * Get default settings based on user role
+ * @param {string} role
+ * @returns {Object} Default settings for the role
  */
-const getSettings = async (userId) => {
-  const settings = await UserNotificationSettings.findOne({ userId, isActive: true });
-  
-  if (!settings) {
-    throw new ApiError(httpStatus.NOT_FOUND, 'Notification settings not found');
+const getDefaultSettings = (role) => {
+  switch (role) {
+    case 'admin':
+    case 'super-admin':
+    case 'scheduler':
+      return adminNotificationSchema;
+    case 'requestor':
+      return requestorNotificationSchema;
+    case 'driver':
+      return driverNotificationSchema;
+    default:
+      return {};
   }
-  
-  return settings;
 };
 
 /**
- * Get or create notification settings for a user
+ * Get user notification settings
  * @param {ObjectId} userId
- * @param {string} role - User role
- * @returns {Promise<UserNotificationSettings>}
+ * @returns {Promise<Object>}
  */
-const getOrCreateSettings = async (userId, role) => {
+const getSettings = async (userId) => {
   let settings = await UserNotificationSettings.findOne({ userId, isActive: true });
   
   if (!settings) {
-    // Create default settings based on role
-    let defaultSettings;
-    
-    switch (role) {
-      case 'admin':
-      case 'super-admin':
-        defaultSettings = { ...adminNotificationSchema };
-        break;
-      case 'driver':
-        defaultSettings = { ...driverNotificationSchema };
-        break;
-      default:
-        defaultSettings = { ...requestorNotificationSchema };
-        break;
+    // Create default settings if not exists
+    const user = await User.findById(userId);
+    if (!user) {
+      throw new ApiError(httpStatus.NOT_FOUND, 'User not found');
     }
     
+    const defaultSettings = getDefaultSettings(user.role);
     settings = await UserNotificationSettings.create({
       userId,
       settings: defaultSettings
@@ -53,24 +49,32 @@ const getOrCreateSettings = async (userId, role) => {
 };
 
 /**
- * Update notification settings for a user
+ * Update user notification settings
  * @param {ObjectId} userId
- * @param {Object} updateBody - New settings
- * @returns {Promise<UserNotificationSettings>}
+ * @param {Object} newSettings
+ * @returns {Promise<Object>}
  */
-const updateSettings = async (userId, updateBody) => {
-  const settings = await UserNotificationSettings.findOne({ userId, isActive: true });
+const updateSettings = async (userId, newSettings) => {
+  let settings = await UserNotificationSettings.findOne({ userId, isActive: true });
   
   if (!settings) {
-    throw new ApiError(httpStatus.NOT_FOUND, 'Notification settings not found');
+    // Create new settings if not exists
+    const user = await User.findById(userId);
+    if (!user) {
+      throw new ApiError(httpStatus.NOT_FOUND, 'User not found');
+    }
+    
+    const defaultSettings = getDefaultSettings(user.role);
+    settings = await UserNotificationSettings.create({
+      userId,
+      settings: { ...defaultSettings, ...newSettings }
+    });
+  } else {
+    // Update existing settings
+    settings.settings = { ...settings.settings, ...newSettings };
+    await settings.save();
   }
   
-  settings.settings = {
-    ...settings.settings,
-    ...updateBody
-  };
-  
-  await settings.save();
   return settings;
 };
 
@@ -80,20 +84,7 @@ const updateSettings = async (userId, updateBody) => {
  * @returns {Promise<Object>}
  */
 const resetSettingsForRole = async (role) => {
-  let defaultSettings;
-  
-  switch (role) {
-    case 'admin':
-    case 'super-admin':
-      defaultSettings = { ...adminNotificationSchema };
-      break;
-    case 'driver':
-      defaultSettings = { ...driverNotificationSchema };
-      break;
-    default:
-      defaultSettings = { ...requestorNotificationSchema };
-      break;
-  }
+  const defaultSettings = getDefaultSettings(role);
   
   // Create a template for super admin
   await UserNotificationSettings.findOneAndUpdate(
@@ -107,7 +98,6 @@ const resetSettingsForRole = async (role) => {
 
 module.exports = {
   getSettings,
-  getOrCreateSettings,
   updateSettings,
   resetSettingsForRole
 }; 

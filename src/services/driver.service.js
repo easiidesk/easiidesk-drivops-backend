@@ -1,4 +1,3 @@
-const Driver = require('../models/driver.model');
 const Vehicle = require('../models/vehicle.model');
 const User = require('../models/user.model');
 
@@ -26,16 +25,14 @@ const getDrivers = async (filters = {}, options = {}) => {
   };
   
   // Build the query
-  const driverQuery = Driver.find(queryFilters)
-    .populate('user', 'name email phone role')
-    .populate('vehicle', 'model licensePlate')
+  const driverQuery = User.find(queryFilters)
     .sort(queryOptions.sort)
     .skip(skip)
     .limit(queryOptions.limit);
   
   // Execute the query
   const drivers = await driverQuery;
-  const total = await Driver.countDocuments(queryFilters);
+  const total = await User.countDocuments(queryFilters);
   
   return {
     drivers,
@@ -50,11 +47,11 @@ const getDrivers = async (filters = {}, options = {}) => {
 
 /**
  * Get driver by ID
- * @param {string} id - Driver ID
- * @returns {Promise<Object>} Driver object
+ * @param {string} id - User ID
+ * @returns {Promise<Object>} User object
  */
 const getDriverById = async (id) => {
-  return await Driver.findOne({ _id: id, isActive: true, deletedAt: null })
+  return await User.findOne({ _id: id, isActive: true, deletedAt: null })
     .populate('user', 'name email phone role')
     .populate('vehicle', 'model licensePlate type year color');
 };
@@ -62,17 +59,17 @@ const getDriverById = async (id) => {
 /**
  * Get driver by user ID
  * @param {string} userId - User ID
- * @returns {Promise<Object>} Driver object
+ * @returns {Promise<Object>} User object
  */
 const getDriverByUserId = async (userId) => {
-  return await Driver.findOne({ user: userId, isActive: true, deletedAt: null })
+  return await User.findOne({ user: userId, isActive: true, deletedAt: null })
     .populate('user', 'name email phone role')
     .populate('vehicle', 'model licensePlate type year color');
 };
 
 /**
  * Create new driver
- * @param {Object} driverData - Driver data
+ * @param {Object} driverData - User data
  * @returns {Promise<Object>} Created driver
  */
 const createDriver = async (driverData) => {
@@ -83,17 +80,17 @@ const createDriver = async (driverData) => {
   }
 
   // Check if driver already exists for this user
-  const existingDriver = await Driver.findOne({ 
+  const existingDriver = await User.findOne({ 
     user: driverData.user,
     deletedAt: null
   });
 
   if (existingDriver) {
-    throw new Error('Driver profile already exists for this user');
+    throw new Error('User profile already exists for this user');
   }
 
   // Check if license number is already in use
-  const licenseCheck = await Driver.findOne({ 
+  const licenseCheck = await User.findOne({ 
     licenseNumber: driverData.licenseNumber,
     deletedAt: null
   });
@@ -103,7 +100,7 @@ const createDriver = async (driverData) => {
   }
 
   // Create new driver
-  const driver = new Driver(driverData);
+  const driver = new User(driverData);
   await driver.save();
 
   // If vehicle is assigned, update vehicle's driver
@@ -126,20 +123,20 @@ const createDriver = async (driverData) => {
 
 /**
  * Update driver
- * @param {string} id - Driver ID
+ * @param {string} id - User ID
  * @param {Object} updateData - Data to update
  * @returns {Promise<Object>} Updated driver
  */
 const updateDriver = async (id, updateData) => {
   // Check if driver exists
-  const driver = await Driver.findOne({ _id: id, isActive: true, deletedAt: null });
+  const driver = await User.findOne({ _id: id, isActive: true, deletedAt: null });
   if (!driver) {
-    throw new Error('Driver not found');
+    throw new Error('User not found');
   }
 
   // Check if license number is unique if being updated
   if (updateData.licenseNumber && updateData.licenseNumber !== driver.licenseNumber) {
-    const licenseCheck = await Driver.findOne({ 
+    const licenseCheck = await User.findOne({ 
       licenseNumber: updateData.licenseNumber,
       _id: { $ne: id },
       deletedAt: null
@@ -182,16 +179,16 @@ const updateDriver = async (id, updateData) => {
 
 /**
  * Update driver status
- * @param {string} id - Driver ID
+ * @param {string} id - User ID
  * @param {string} status - New status
  * @param {string} notes - Status change notes
  * @returns {Promise<Object>} Updated driver
  */
 const updateDriverStatus = async (id, status, notes = '') => {
   // Check if driver exists
-  const driver = await Driver.findOne({ _id: id, isActive: true, deletedAt: null });
+  const driver = await User.findOne({ _id: id, isActive: true, deletedAt: null });
   if (!driver) {
-    throw new Error('Driver not found');
+    throw new Error('User not found');
   }
 
   // Update status
@@ -210,15 +207,15 @@ const updateDriverStatus = async (id, status, notes = '') => {
 
 /**
  * Add document to driver
- * @param {string} id - Driver ID
+ * @param {string} id - User ID
  * @param {Object} document - Document data
  * @returns {Promise<Object>} Updated driver
  */
 const addDocument = async (id, document) => {
   // Check if driver exists
-  const driver = await Driver.findOne({ _id: id, isActive: true, deletedAt: null });
+  const driver = await User.findOne({ _id: id, isActive: true, deletedAt: null });
   if (!driver) {
-    throw new Error('Driver not found');
+    throw new Error('User not found');
   }
 
   // Add document
@@ -235,15 +232,15 @@ const addDocument = async (id, document) => {
 
 /**
  * Verify document
- * @param {string} driverId - Driver ID
+ * @param {string} driverId - User ID
  * @param {string} documentId - Document ID
  * @returns {Promise<Object>} Updated driver
  */
 const verifyDocument = async (driverId, documentId) => {
   // Check if driver exists
-  const driver = await Driver.findOne({ _id: driverId, isActive: true, deletedAt: null });
+  const driver = await User.findOne({ _id: driverId, isActive: true, deletedAt: null });
   if (!driver) {
-    throw new Error('Driver not found');
+    throw new Error('User not found');
   }
 
   // Find document
@@ -262,14 +259,14 @@ const verifyDocument = async (driverId, documentId) => {
 
 /**
  * Delete driver (soft delete)
- * @param {string} id - Driver ID
+ * @param {string} id - User ID
  * @returns {Promise<Object>} Deleted driver
  */
 const deleteDriver = async (id) => {
   // Check if driver exists
-  const driver = await Driver.findOne({ _id: id, isActive: true, deletedAt: null });
+  const driver = await User.findOne({ _id: id, isActive: true, deletedAt: null });
   if (!driver) {
-    throw new Error('Driver not found');
+    throw new Error('User not found');
   }
 
   // If driver has vehicle, update vehicle's driver reference

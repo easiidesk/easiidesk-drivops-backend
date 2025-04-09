@@ -6,7 +6,12 @@ const { objectId } = require('./custom.validator');
  */
 const getTripRequests = {
   query: Joi.object().keys({
-    status: Joi.string().valid('pending', 'scheduled', 'cancelled'),
+    status: Joi.alternatives().try(
+      Joi.string().valid('pending', 'scheduled', 'cancelled'),
+      Joi.array().items(Joi.string().valid('pending', 'scheduled', 'cancelled'))
+    ),
+    vehicleId: Joi.string().allow('', null).optional(),
+    driverId: Joi.string().allow('', null).optional(),
     dateFrom: Joi.date().iso(),
     dateTo: Joi.date().iso().min(Joi.ref('dateFrom')),
     createdBy: Joi.custom(objectId),
@@ -31,7 +36,7 @@ const getTripRequest = {
 const createTripRequest = {
   body: Joi.object().keys({
     destination: Joi.string().required().trim(),
-    mapLink: Joi.string().uri().allow('', null),
+    mapLink: Joi.string().allow('', null),
     dateTime: Joi.date().iso().required(),
     purpose: Joi.custom(objectId).required(),
     jobCardId: Joi.string().allow('', null),
@@ -50,13 +55,14 @@ const updateTripRequest = {
   body: Joi.object()
     .keys({
       destination: Joi.string().trim(),
-      mapLink: Joi.string().uri().allow('', null),
+      mapLink: Joi.string().allow('', null),
       dateTime: Joi.date().iso(),
       purpose: Joi.custom(objectId),
       jobCardId: Joi.string().allow('', null),
       noOfPeople: Joi.number().integer().min(1),
       requiredVehicle: Joi.array().items(Joi.custom(objectId)).min(1),
       status: Joi.string().valid('pending', 'scheduled', 'cancelled'),
+      cancelRemarks: Joi.string().allow('', null).optional(),
     })
     .min(1),
 };
