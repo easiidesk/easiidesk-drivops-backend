@@ -307,7 +307,7 @@ const getTripRequests = async (filter = {}, options = {}) => {
         }
       ]
     })
-    .sort(options.sortBy ? options.sortBy : { createdAt: -1 })
+    .sort(options.sortBy ? options.sortBy : { dateTime: 1 })
     .skip(pagination.skip)
     .limit(pagination.limit);
 
@@ -351,7 +351,7 @@ const updateRequestLinkStatus = async (requestId, scheduleId) => {
     { new: true }
   );
   
-  return getTripRequestById(updated._id);
+  return true;
 };
 
 module.exports = {

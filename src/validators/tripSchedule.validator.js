@@ -13,6 +13,10 @@ const getSchedules = {
     sortBy: Joi.string(),
     limit: Joi.number().integer(),
     page: Joi.number().integer(),
+    status: Joi.alternatives().try(
+      Joi.string().valid('scheduled', 'in progress', 'completed', 'cancelled'),
+      Joi.array().items(Joi.string().valid('scheduled', 'in progress', 'completed', 'cancelled'))
+    ),
   }),
 };
 
@@ -33,6 +37,8 @@ const destinationSchema = Joi.object().keys({
   tripStartTime: Joi.date().iso().required(),
   tripApproxArrivalTime: Joi.date().iso().min(Joi.ref('tripStartTime')).allow(null),
   tripPurposeTime: Joi.number().integer().min(0).allow(null),
+  purposeId: Joi.string().allow(null).optional(),
+  destination: Joi.string().allow(null).optional(),
 });
 
 /**
@@ -71,6 +77,14 @@ const deleteSchedule = {
     id: Joi.custom(objectId).required(),
   }),
 };
+/**
+ * Delete schedule validation schema
+ */
+const cancelSchedule = {
+  params: Joi.object().keys({
+    id: Joi.custom(objectId).required(),
+  }),
+};
 
 /**
  * Check availability validation schema
@@ -91,5 +105,6 @@ module.exports = {
   createSchedule,
   updateSchedule,
   deleteSchedule,
+  cancelSchedule,
   checkAvailability,
 }; 

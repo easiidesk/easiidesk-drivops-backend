@@ -21,6 +21,24 @@ const destinationSchema = mongoose.Schema(
     },
     tripPurposeTime: {
       type: Number
+    },
+    purposeId: {
+      type: mongoose.SchemaTypes.ObjectId,
+      ref: 'TripPurpose',
+      default: null
+    },
+    destination: {  
+      type: String,
+      default: null
+    },
+    destinationAddedBy: {
+      type: mongoose.SchemaTypes.ObjectId,
+      ref: 'User',
+      default: null
+    },
+    destinationAddedAt: {
+      type: Date,
+      default: null
     }
   },
   { _id: true }
@@ -32,6 +50,11 @@ const destinationSchema = mongoose.Schema(
  */
 const tripScheduleSchema = mongoose.Schema(
   {
+    status: {
+      type: String,
+      enum: ['scheduled', 'in progress', 'completed', 'cancelled'],
+      default: 'scheduled'
+    },
     driverId: {
       type: mongoose.SchemaTypes.ObjectId,
       ref: 'User',
@@ -69,7 +92,17 @@ const tripScheduleSchema = mongoose.Schema(
       type: mongoose.SchemaTypes.ObjectId,
       ref: 'User',
       required: true
+    },
+    cancelledBy: {
+      type: mongoose.SchemaTypes.ObjectId,
+      ref: 'User',
+      default: null
+    },
+    cancelledAt: {
+      type: Date,
+      default: null
     }
+    
   },
   {
     timestamps: true,

@@ -197,6 +197,33 @@ router.put('/:id',
   validateRequest(tripScheduleValidation.updateSchedule),
   tripScheduleController.updateSchedule
 );
+/**
+ * @swagger
+ * /schedules/{id}:
+ *   delete:
+ *     summary: Delete a trip schedule
+ *     description: Delete a trip schedule by ID.
+ *     tags: [Trip Schedules]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Trip schedule ID
+ *     responses:
+ *       "204":
+ *         description: No content
+ *       "401":
+ *         $ref: '#/components/responses/Unauthorized'
+ *       "403":
+ *         $ref: '#/components/responses/Forbidden'
+ *       "404":
+ *         $ref: '#/components/responses/NotFound'
+ */
+router.delete('/:id/cancel', authorize(['scheduler','admin', 'super-admin']), validateParams(tripScheduleValidation.cancelSchedule), tripScheduleController.cancelSchedule);
 
 /**
  * @swagger

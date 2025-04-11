@@ -21,6 +21,10 @@ const getSchedules = catchAsync(async (req, res) => {
   if (req.query.vehicleId) {
     filter.vehicleId = req.query.vehicleId;
   }
+
+  if (req.query.status) {
+    filter.status = req.query.status;
+  }
   
   // Add date range filter for trip start time
   if (req.query.dateFrom || req.query.dateTo) {
@@ -99,7 +103,7 @@ const createSchedule = catchAsync(async (req, res) => {
  */
 const updateSchedule = catchAsync(async (req, res) => {
   
-  const tripSchedule = await tripScheduleService.updateSchedule(req.params.id, req.body);
+  const tripSchedule = await tripScheduleService.updateSchedule(req.params.id, req.body, req.user._id);
   
   // Update linked trip requests
   if (req.body.destinations) {
@@ -122,18 +126,38 @@ const updateSchedule = catchAsync(async (req, res) => {
  * @route DELETE /schedules/:id 
  */
 const deleteSchedule = catchAsync(async (req, res) => {
-  const schedule = await tripScheduleService.getScheduleById(req.params.id);
+  const schedule = await tripScheduleService.getScheduleById(req.params.id, false);
   
   // Unlink all trip requests
   if (schedule && schedule.destinations) {
     for (const destination of schedule.destinations) {
-      if (destination.requestId) {
-        await tripRequestService.updateRequestLinkStatus(destination.requestId, null);
+      if (destination.requestId._id) {
+        await tripRequestService.updateRequestLinkStatus(destination.requestId._id, null);
       }
     }
   }
   
   await tripScheduleService.deleteSchedule(req.params.id, req.user._id);
+  res.status(status.NO_CONTENT).send();
+});
+
+/**
+ * Cancel trip schedule by id
+ * @route DELETE /schedules/:id/cancel 
+ */
+const cancelSchedule = catchAsync(async (req, res) => {
+  const schedule = await tripScheduleService.getScheduleById(req.params.id, false);
+  
+  // Unlink all trip requests
+  if (schedule && schedule.destinations) {
+    for (const destination of schedule.destinations) {
+      if (destination.requestId._id) {
+        await tripRequestService.updateRequestLinkStatus(destination.requestId._id, null);
+      }
+    }
+  }
+  
+  await tripScheduleService.cancelSchedule(req.params.id, req.user._id);
   res.status(status.NO_CONTENT).send();
 });
 
@@ -161,5 +185,6 @@ module.exports = {
   createSchedule,
   updateSchedule,
   deleteSchedule,
+  cancelSchedule,
   checkAvailability,
 }; 
