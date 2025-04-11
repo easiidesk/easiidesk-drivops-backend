@@ -7,7 +7,14 @@ const adminNotificationSchema = {
   receiveDriverPunchOut: true,
   receiveDriverTripStarted: true,
   receiveDriverTripEnded: true,
-  receiveDriverIdle: true
+  receiveDriverIdle: true,
+  receiveTripScheduledNotification: true,
+  receiveTripScheduleUpdatedNotification: true,
+  receiveTripScheduleCancelledNotification: true,
+  receiveTripRequestedNotification: true,
+  receiveTripRequestUpdatedNotification: true,
+  receiveTripRequestCancelledNotification: true,
+  
 };
 
 const requestorNotificationSchema = {
@@ -19,8 +26,8 @@ const requestorNotificationSchema = {
 
 const driverNotificationSchema = {
   receiveNotification: true,
-  receiveTripScheduledNotfication: true,
-  receiveTripScheduleUpdatedNotification: true,
+  receiveMyTripScheduledNotification: true,
+  receiveMyTripScheduleUpdatedNotification: true,
   receiveReminderForUpcomingTrip: true,
   reminderForUpcomingTripTime: 10,
   receiveReminderForPunchOut: true,
@@ -52,7 +59,8 @@ const userNotificationSettingsSchema = mongoose.Schema(
     }
   },
   {
-    timestamps: true
+    timestamps: true,
+    collection: 'userNotificationSettings'
   }
 );
 

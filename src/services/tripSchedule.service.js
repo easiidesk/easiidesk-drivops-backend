@@ -2,6 +2,7 @@ const { status } = require('http-status');
 const { TripSchedule } = require('../models');
 const ApiError = require('../utils/ApiError');
 const { getPagination } = require('../utils/pagination');
+const mongoose = require('mongoose');
 
 /**
  * Format trip schedule data according to required structure
@@ -137,7 +138,8 @@ const getScheduleById = async (id) => {
  * @param {ObjectId} userId - User ID creating the schedule
  * @returns {Promise<TripSchedule>}
  */
-const createSchedule = async (scheduleBody) => {
+const createSchedule = async (scheduleBody, userId) => {
+  scheduleBody.createdBy = userId;
   return TripSchedule.create(scheduleBody);
 };
 

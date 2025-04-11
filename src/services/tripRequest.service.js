@@ -2,14 +2,7 @@ const { status } = require('http-status');
 const { TripRequest, TripRequestHistory } = require('../models');
 const ApiError = require('../utils/ApiError');
 const { getPagination } = require('../utils/pagination');
-
-/**
- * Create a history entry for a trip request
- * @private
- */
-const createHistory = async (historyData) => {
-  return TripRequestHistory.create(historyData);
-};
+const { sendNotificationsToRoles, formatTripRequestNotification } = require('../utils/notifcationHelper');
 
 /**
  * Format trip request data according to required structure
@@ -156,7 +149,15 @@ const createTripRequest = async (requestBody, userId) => {
     remarks: 'Trip request created'
   });
 
-  return getTripRequestById(tripRequest._id);
+  const tripRequestData = await getTripRequestById(tripRequest._id);
+
+  //notify all schedulers-admins-super-admins
+  sendNotificationsToRoles(['scheduler', 'admin', 'super-admin'], ['receiveTripRequestedNotification'], 'New Trip Request', formatTripRequestNotification(tripRequestData), {
+    tripRequestId: tripRequest._id.toString()
+  });
+  
+
+  return tripRequestData;
 };
 
 /**

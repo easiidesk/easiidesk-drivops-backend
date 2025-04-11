@@ -2,7 +2,7 @@ const {status} = require('http-status');
 const catchAsync = require('../utils/catchAsync');
 const { tripScheduleService, tripRequestService } = require('../services');
 const ApiError = require('../utils/ApiError');
-
+const { sendNotificationsToRoles, formatTripScheduleNotification, sendNotificationsToIds } = require('../utils/notifcationHelper');
 /**
  * Get all trip schedules with filtering and pagination
  * @route GET /schedules
@@ -60,17 +60,37 @@ const getSchedule = catchAsync(async (req, res) => {
  * @route POST /schedules
  */
 const createSchedule = catchAsync(async (req, res) => {
-  // Create schedule
-  const tripSchedule = await tripScheduleService.createSchedule(req.body);
-  
+  try {
+    // Create schedule
+    const tripSchedule = await tripScheduleService.createSchedule(req.body, req.user._id);
+    
   // Update trip requests to mark them as scheduled
   for (const destination of req.body.destinations) {
     if (destination.requestId) {
       await tripRequestService.updateRequestLinkStatus(destination.requestId, tripSchedule.id);
     }
   }
+
+  const tripScheduleData = await tripScheduleService.getScheduleById(tripSchedule.id);
+
+  //notify all schedulers-admins-super-admins
+  sendNotificationsToRoles(['scheduler', 'admin', 'super-admin'], ['receiveTripScheduledNotification'], 'New Trip Schedule', formatTripScheduleNotification(tripScheduleData), {
+    tripScheduleId: tripSchedule._id.toString()
+  }).catch(error => {
+    console.error('Send notification error:', error);
+  });
+
+  //notify requested person
+  sendNotificationsToIds([tripScheduleData.destinations?.[0]?.createdBy?.id?.toString()], ['receiveMyRequestNotification'], 'Your Request is Scheduled', formatTripScheduleNotification(tripScheduleData), {
+    tripScheduleId: tripSchedule._id.toString()
+  }).catch(error => {
+    console.error('Send notification error:', error);
+  });
   
   res.status(status.CREATED).send(tripSchedule);
+  } catch (error) {
+    throw new ApiError(status.UNKNOWN_ERROR, error.message);
+  }
 });
 
 /**

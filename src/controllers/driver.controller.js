@@ -11,24 +11,10 @@ const getDrivers = async (req, res, next) => {
   try {
     // Extract query parameters
     const { 
-      page = 1, 
-      limit = 10, 
-      status, 
-      isAvailable, 
       search 
     } = req.query;
-    
-    // Build filters
+  
     const filters = {};
-    
-    if (status) {
-      filters.status = status;
-    }
-    
-    if (isAvailable !== undefined) {
-      filters.isAvailable = isAvailable === 'true';
-    }
-    
     if (search) {
       filters.$or = [
         { 'user.name': { $regex: search, $options: 'i' } },
@@ -40,9 +26,7 @@ const getDrivers = async (req, res, next) => {
     
     // Build options
     const options = {
-      page: parseInt(page, 10),
-      limit: parseInt(limit, 10),
-      sort: { createdAt: -1 }
+      sort: { name: 1 }
     };
     
     // Get drivers

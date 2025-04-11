@@ -10,6 +10,7 @@ const getVersionFromRequest = (req) => {
   const platform = req.headers['platform'] || 'web';
   const appVersion = req.headers['app-version'] || '';
   
+  
   return {
     version: appVersion,
     platform
@@ -27,10 +28,6 @@ const checkVersionFromRequest = (req) => {
   // Get version info from request
   const { version, platform } = getVersionFromRequest(req);
   
-  // If no version provided, use the web minimum (for browser access)
-  if (!version) {
-    return true;
-  }
   
   // Get minimum version for platform
   let minVersion;
@@ -47,11 +44,15 @@ const checkVersionFromRequest = (req) => {
       currentVersion = APP_VERSIONS.ios.currentVersion;
       releaseNotes = APP_VERSIONS.ios.releaseNotes;
       break;
+    default:
+      minVersion = APP_VERSIONS.android.minimumVersion;
+      currentVersion = APP_VERSIONS.android.currentVersion;
+      releaseNotes = APP_VERSIONS.android.releaseNotes;
+      break;
   }
   
   // Check version
   return {
-    isValid: minVersion ? semver.gte(version, minVersion) : true,
     minimumVersion: minVersion,
     currentVersion: currentVersion,
     releaseNotes: releaseNotes,

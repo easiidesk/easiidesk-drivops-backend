@@ -1,15 +1,16 @@
 const admin = require('firebase-admin');
 const mongodbService = require('./mongodb.service');
-const notificationHistoryService = require('../../modules/notificationHistory/services/notificationHistory.service');
+const notificationHistoryService = require('../../services/notificationHistory.service');
+const config = require('../../config/env');
 
 class NotificationService {
   constructor() {
     // Initialize Firebase Admin SDK
     admin.initializeApp({
       credential: admin.credential.cert({
-        projectId: process.env.FIREBASE_PROJECT_ID,
-        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-        privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+        projectId: config.FIREBASE_PROJECT_ID,
+        clientEmail: config.FIREBASE_CLIENT_EMAIL,
+        privateKey: config.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
       })
     });
   }
@@ -71,10 +72,7 @@ class NotificationService {
         }
       }));
 
-      // Remove invalid tokens
-      if (failedTokens.length > 0) {
-        await this.removeInvalidTokens(failedTokens);
-      }
+      
 
       // Non-blocking notification history creation
       this.storeNotificationHistory(tokens, title, body, data).catch(error => {
@@ -176,14 +174,15 @@ class NotificationService {
 
       // Create notifications in parallel for all users
       const createPromises = users.map(user => 
-        notificationHistoryService.createNotification(
-          user._id,
+        notificationHistoryService.createNotification({
+          userId: user._id,
           title,
           body,
-          {
+          data: {
             ...data,
             userId: user._id.toString()
           }
+        }
         )
       );
 

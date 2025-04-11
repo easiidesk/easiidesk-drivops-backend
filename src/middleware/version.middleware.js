@@ -16,7 +16,7 @@ const versionCheck = (req, res, next) => {
   }
   
   // Check app version
-  const { isValid, minimumVersion, currentVersion, releaseNotes } = checkVersionFromRequest(req);
+  const {minimumVersion, currentVersion, releaseNotes } = checkVersionFromRequest(req);
   res.setHeader('minimum-version', minimumVersion);
   res.setHeader('current-version', currentVersion);
   res.setHeader('release-notes', releaseNotes);

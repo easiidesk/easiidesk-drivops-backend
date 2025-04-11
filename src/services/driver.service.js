@@ -8,27 +8,20 @@ const User = require('../models/user.model');
  * @returns {Promise<Object>} Drivers with pagination info
  */
 const getDrivers = async (filters = {}, options = {}) => {
-  const defaultOptions = {
-    page: 1,
-    limit: 10,
-    sort: { createdAt: -1 }
-  };
   
-  const queryOptions = { ...defaultOptions, ...options };
-  const skip = (queryOptions.page - 1) * queryOptions.limit;
+  const queryOptions = { ...options };
   
   // Add default filter for active and non-deleted drivers
   const queryFilters = {
     ...filters,
+    role: 'driver',
     isActive: true,
     deletedAt: null
   };
   
   // Build the query
   const driverQuery = User.find(queryFilters)
-    .sort(queryOptions.sort)
-    .skip(skip)
-    .limit(queryOptions.limit);
+    .sort(queryOptions.sort);
   
   // Execute the query
   const drivers = await driverQuery;
