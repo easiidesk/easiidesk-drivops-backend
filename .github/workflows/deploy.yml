@@ -6,33 +6,63 @@ on:
 env:
   SERVER_IP: 63.142.251.137
   DEPLOY_PATH: /root/tse-easiidesk-drivops
+  APP_PORT: 4001
 
 jobs:
-  deploy:
+  build-and-deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v2
+      
+      - uses: actions/setup-node@v1
         with:
-          fetch-depth: 0
-
-      - name: Setup SSH
-        uses: webfactory/ssh-agent@v0.7.0
+          node-version: '20.x'
+      
+      - name: Install dependencies
+        run: npm install
+      
+      - name: Build
+        run: npm run build --if-present
+      
+      - name: Install SSH Key
+        uses: shimataro/ssh-key-action@v2
         with:
-          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
-
-      - name: Setup known_hosts
-        run: |
-          mkdir -p ~/.ssh
-          ssh-keyscan -H ${{ env.SERVER_IP }} >> ~/.ssh/known_hosts
-
-      - name: Deploy to server
-        run: |
-          ssh root@${{ env.SERVER_IP }} "mkdir -p ${{ env.DEPLOY_PATH }}"
-          rsync -avz --delete --exclude='.git/' --exclude='node_modules/' ./ root@${{ env.SERVER_IP }}:${{ env.DEPLOY_PATH }}/
-          ssh root@${{ env.SERVER_IP }} "cd ${{ env.DEPLOY_PATH }} && npm install"
-          ssh root@${{ env.SERVER_IP }} "cd ${{ env.DEPLOY_PATH }} && pm2 restart app || pm2 start app.js --name app"
-
-      - name: Verify deployment
-        run: |
-          ssh root@${{ env.SERVER_IP }} "cd ${{ env.DEPLOY_PATH }} && pm2 status" 
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          known_hosts: unnecessary
+      
+      - name: Adding Known Hosts
+        run: ssh-keyscan -H ${{ env.SERVER_IP }} >> ~/.ssh/known_hosts
+      
+      - name: Deploy with rsync
+        run: rsync -avz --delete --exclude='.git/' --exclude='node_modules/' ./ root@${{ env.SERVER_IP }}:${{ env.DEPLOY_PATH }}/
+      
+      - name: Post-deployment setup
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ env.SERVER_IP }}
+          username: root
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            cd ${{ env.DEPLOY_PATH }}
+            
+            # Install dependencies on the server
+            echo "Installing dependencies in ${{ env.DEPLOY_PATH }}"
+            npm install
+            
+            # Install forever if not already installed
+            echo "Installing forever..."
+            npm install -g forever
+            
+            # Try to find and stop any existing app running on port 4001
+            # Get process ID that's using port 4001
+            PID=$(lsof -i:${{ env.APP_PORT }} -t || echo '')
+            if [ ! -z "$PID" ]; then
+              echo "Found process $PID using port ${{ env.APP_PORT }}, stopping it..."
+              kill -9 $PID || echo "Failed to kill process $PID"
+            fi
+            
+            # Also try to stop by searching for apps with the same path
+            forever list | grep ${{ env.DEPLOY_PATH }}/src/server.js | awk '{print $3}' | xargs -r forever stop
+            
+            # Start the app with forever on the specified port
+            PORT=${{ env.APP_PORT }} forever start --uid "tse-easiidesk-drivops" -a -l ${{ env.DEPLOY_PATH }}/forever.log -o ${{ env.DEPLOY_PATH }}/out.log -e ${{ env.DEPLOY_PATH }}/err.log src/server.js 
