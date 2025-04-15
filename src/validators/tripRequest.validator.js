@@ -36,12 +36,19 @@ const getTripRequest = {
 const createTripRequest = {
   body: Joi.object().keys({
     destination: Joi.string().required().trim(),
+    isWaiting: Joi.boolean().optional().allow(null),
     mapLink: Joi.string().allow('', null),
     dateTime: Joi.date().iso().required(),
+    timeType: Joi.string().valid('any', 'morning', 'afternoon', 'evening').optional().allow(null),
     purpose: Joi.custom(objectId).required(),
     jobCardId: Joi.string().allow('', null),
-    noOfPeople: Joi.number().integer().min(1).required(),
-    requiredVehicle: Joi.array().items(Joi.custom(objectId)).min(1).required(),
+    noOfPeople: Joi.number().integer().required(),
+    requiredVehicle: Joi.array().items(
+      Joi.alternatives().try(
+        Joi.custom(objectId),
+        Joi.string().valid('Any Car', 'Any Van', 'Any Truck')
+      )
+    ).min(1).required(),
   }),
 };
 
@@ -55,12 +62,19 @@ const updateTripRequest = {
   body: Joi.object()
     .keys({
       destination: Joi.string().trim(),
+      isWaiting: Joi.boolean().optional().allow(null),
       mapLink: Joi.string().allow('', null),
       dateTime: Joi.date().iso(),
+      timeType: Joi.string().valid('any', 'morning', 'afternoon', 'evening').optional().allow(null),
       purpose: Joi.custom(objectId),
       jobCardId: Joi.string().allow('', null),
-      noOfPeople: Joi.number().integer().min(1),
-      requiredVehicle: Joi.array().items(Joi.custom(objectId)).min(1),
+      noOfPeople: Joi.number().integer(),
+      requiredVehicle: Joi.array().items(
+        Joi.alternatives().try(
+          Joi.custom(objectId),
+          Joi.string().valid('Any Car', 'Any Van', 'Any Truck')
+        )
+      ).min(1),
       status: Joi.string().valid('pending', 'scheduled', 'cancelled'),
       cancelRemarks: Joi.string().allow('', null).optional(),
     })

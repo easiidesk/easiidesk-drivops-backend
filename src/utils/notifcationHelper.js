@@ -31,11 +31,15 @@ const sendNotificationsToIds = async (ids, notificationTypeList, title, message,
     const userNotificationSettings = await UserNotificationSettings.find({ userId: { $in: users.map(user => user._id) }});
     userNotificationSettings.forEach(userNotificationSetting => {
       if (userNotificationSetting.settings['receiveNotification']) {
-        notificationTypeList.forEach(notificationType => {
-          if (userNotificationSetting.settings[notificationType]) {
-            tokensToSendNotification.push(...userMap[userNotificationSetting.userId].fcmTokens);
-          }
-        });
+        if(notificationTypeList.length>0){
+          notificationTypeList.forEach(notificationType => {
+            if (userNotificationSetting.settings[notificationType]) {
+              tokensToSendNotification.push(...userMap[userNotificationSetting.userId].fcmTokens);
+            }
+          });
+        }else{
+          tokensToSendNotification.push(...userMap[userNotificationSetting.userId].fcmTokens);
+        }
       }
     });
   

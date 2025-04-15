@@ -12,6 +12,10 @@ const tripRequestSchema = mongoose.Schema(
       required: true,
       trim: true
     },
+    isWaiting: {
+      type: Boolean,
+      default: false
+    },
     mapLink: {
       type: String,
       trim: true
@@ -19,6 +23,10 @@ const tripRequestSchema = mongoose.Schema(
     dateTime: {
       type: Date,
       required: true
+    },
+    timeType: {
+      type: String,
+      enum: ['any', 'morning', 'afternoon', 'evening'],
     },
     purpose: {
       type: mongoose.SchemaTypes.ObjectId,
@@ -34,16 +42,22 @@ const tripRequestSchema = mongoose.Schema(
       required: true
     },
     requiredVehicle: {
-      type: [{
-        type: mongoose.SchemaTypes.ObjectId,
-        ref: 'Vehicle'
-      }],
+      type: [mongoose.Schema.Types.Mixed],
       required: true,
       validate: {
-        validator: function(v) {
-          return v && v.length > 0;
+        validator: function(arr) {
+          if (!arr || arr.length === 0) return false;
+          return arr.every(item => {
+            // Check if it's a valid vehicle type string
+            if (['Any Car', 'Any Van', 'Any Truck'].includes(item)) {
+              return true;
+            }
+            // Check if it's a valid ObjectId
+            let isValid = mongoose.Types.ObjectId.isValid(item);
+            return isValid;
+          });
         },
-        message: 'At least one vehicle type is required'
+        message: 'Required vehicle must be either a valid vehicle ID or one of: car, van, truck'
       }
     },
     status: {

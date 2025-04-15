@@ -19,7 +19,6 @@ const adminNotificationSchema = {
 
 const requestorNotificationSchema = {
   receiveNotification: true,
-  receiveMyRequestNotification: true,
   receiveMyRequestTripStarted: true,
   receiveMyRequestTripEnded: true
 };

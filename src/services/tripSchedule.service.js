@@ -44,7 +44,7 @@ const formatTripSchedule = (schedule) => {
           tripApproxArrivalTime: dest.tripApproxArrivalTime,
           tripPurposeTime: dest.tripPurposeTime,
           jobCardId: dest.requestId.jobCardId || null,
-          noOfPeople: dest.requestId.noOfPeople || null,
+          noOfPeople: dest.requestId.noOfPeople || 0,
           createdBy: dest.requestId.createdBy ? {
             id: dest.requestId.createdBy._id,
             name: dest.requestId.createdBy.name,
@@ -219,6 +219,7 @@ const updateSchedule = async (scheduleId, updateBody, userId) => {
   // Don't allow updating certain fields
   const safeUpdateBody = { ...updateBody };
   delete safeUpdateBody.createdAt;
+
 
   
   Object.assign(schedule, safeUpdateBody);

@@ -3,6 +3,7 @@ const { TripRequest, TripRequestHistory } = require('../models');
 const ApiError = require('../utils/ApiError');
 const { getPagination } = require('../utils/pagination');
 const { sendNotificationsToRoles, formatTripRequestNotification } = require('../utils/notifcationHelper');
+const mongoose = require('mongoose');
 
 /**
  * Format trip request data according to required structure
@@ -13,8 +14,10 @@ const formatTripRequest = (tripRequest) => {
   const formatted = {
     _id: tripRequest._id,
     destination: tripRequest.destination,
+    isWaiting: tripRequest.isWaiting,
     mapLink: tripRequest.mapLink,
     dateTime: tripRequest.dateTime,
+    timeType: tripRequest.timeType,
     purpose: tripRequest.purpose ? {
       id: tripRequest.purpose._id,
       name: tripRequest.purpose.name,
@@ -22,10 +25,7 @@ const formatTripRequest = (tripRequest) => {
     } : null,
     jobCardId: tripRequest.jobCardId,
     noOfPeople: tripRequest.noOfPeople,
-    requiredVehicle: tripRequest.requiredVehicle ? tripRequest.requiredVehicle.map(vehicle => ({
-      id: vehicle._id,
-      name: vehicle.name
-    })) : [],
+    requiredVehicle: tripRequest.requiredVehicle,
     remarks: tripRequest.remarks,
     createdBy: tripRequest.createdBy ? {
       id: tripRequest.createdBy._id,
@@ -90,7 +90,10 @@ const formatTripRequest = (tripRequest) => {
 const getRawTripRequestById = async (id) => {
   const tripRequest = await TripRequest.findById(id)
     .populate('purpose', 'name jobCardNeeded')
-    .populate('requiredVehicle', 'name')
+    .populate({
+      path: 'requiredVehicle',
+      select: 'name'
+    })
     .populate('createdBy', 'name phone')
     .populate({
       path: 'linkedTripId',
@@ -136,6 +139,12 @@ const createTripRequest = async (requestBody, userId) => {
     status: 'pending',
     createdBy: userId
   };
+  requestData.requiredVehicle = requestData.requiredVehicle.map(vehicle => {
+    if (['Any Car', 'Any Van', 'Any Truck'].includes(vehicle)) {
+      return vehicle;
+    }
+    return new mongoose.Types.ObjectId(vehicle);
+  });
   
   const tripRequest = await TripRequest.create(requestData);
   
@@ -191,7 +200,7 @@ const updateTripRequest = async (tripRequestId, updateBody, userId) => {
     safeUpdateBody,
     { new: true }
   ).populate('purpose', 'name jobCardNeeded')
-    .populate('requiredVehicle', 'name')
+    .populate('requiredVehicle.vehicleId', 'name')
     .populate('createdBy', 'name phone')
     .populate({
       path: 'linkedTripId',
@@ -252,7 +261,7 @@ const deleteTripRequest = async (tripRequestId, userId) => {
     },
     { new: true }
   ).populate('purpose', 'name jobCardNeeded')
-    .populate('requiredVehicle', 'name')
+    .populate('requiredVehicle.vehicleId', 'name')
     .populate('createdBy', 'name phone')
     .populate({
       path: 'linkedTripId',
@@ -289,10 +298,25 @@ const deleteTripRequest = async (tripRequestId, userId) => {
  */
 const getTripRequests = async (filter = {}, options = {}) => {
   const pagination = getPagination(options);
+
+  // Handle vehicle filter for both specific vehicles and general types
+  if (filter.requiredVehicle) {
+    const vehicleFilter = filter.requiredVehicle.$in;
+    if (Array.isArray(vehicleFilter)) {
+      const transformedFilter = vehicleFilter.map(vehicle => {
+        if (mongoose.Types.ObjectId.isValid(vehicle)) {
+          return { requiredVehicle: vehicle };
+        }
+        return { requiredVehicle: vehicle };
+      });
+      delete filter.requiredVehicle;
+      filter.$or = transformedFilter;
+    }
+  }
   
+  // First get the trip requests without population
   const tripRequests = await TripRequest.find(filter)
     .populate('purpose', 'name jobCardNeeded')
-    .populate('requiredVehicle', 'name')
     .populate('createdBy', 'name phone')
     .populate({
       path: 'linkedTripId',
@@ -309,11 +333,25 @@ const getTripRequests = async (filter = {}, options = {}) => {
     })
     .sort(options.sortBy ? options.sortBy : { dateTime: 1 })
     .skip(pagination.skip)
-    .limit(pagination.limit);
+    .limit(pagination.limit)
+    .lean();
+
+  // Now populate vehicle details only for ObjectId references
+  const Vehicle = mongoose.model('Vehicle');
+  const populatedRequests = await Promise.all(tripRequests.map(async (request) => {
+    const populatedVehicles = await Promise.all(request.requiredVehicle.map(async (vehicle) => {
+      if (mongoose.Types.ObjectId.isValid(vehicle) && !['Any Car', 'Any Van', 'Any Truck'].includes(vehicle)) {
+        const vehicleDoc = await Vehicle.findById(vehicle).select('name').lean();
+        return vehicleDoc ? { ...vehicleDoc } : {vehicle };
+      }
+      return { id: null, name: vehicle };
+    }));
+    return { ...request, requiredVehicle: populatedVehicles };
+  }));
 
   const total = await TripRequest.countDocuments(filter);
   
-  const formattedResults = tripRequests.map(formatTripRequest);
+  const formattedResults = populatedRequests.map(formatTripRequest);
 
   return {
     results: formattedResults,

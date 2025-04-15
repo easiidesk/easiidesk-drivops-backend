@@ -1,0 +1,38 @@
+name: Deploy to Production
+
+on:
+  workflow_dispatch: # Only manual triggering
+
+env:
+  SERVER_IP: 63.142.251.137
+  DEPLOY_PATH: /root/tse-easiidesk-drivops
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.7.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Setup known_hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ env.SERVER_IP }} >> ~/.ssh/known_hosts
+
+      - name: Deploy to server
+        run: |
+          ssh root@${{ env.SERVER_IP }} "mkdir -p ${{ env.DEPLOY_PATH }}"
+          rsync -avz --delete --exclude='.git/' --exclude='node_modules/' ./ root@${{ env.SERVER_IP }}:${{ env.DEPLOY_PATH }}/
+          ssh root@${{ env.SERVER_IP }} "cd ${{ env.DEPLOY_PATH }} && npm install"
+          ssh root@${{ env.SERVER_IP }} "cd ${{ env.DEPLOY_PATH }} && pm2 restart app || pm2 start app.js --name app"
+
+      - name: Verify deployment
+        run: |
+          ssh root@${{ env.SERVER_IP }} "cd ${{ env.DEPLOY_PATH }} && pm2 status" 
