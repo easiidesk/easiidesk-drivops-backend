@@ -10,7 +10,7 @@ const ApiError = require('../utils/ApiError');
 const getTripPurposes = catchAsync(async (req, res) => {
   const filter = {};
   const options = {
-    sortBy: req.query.sortBy,
+    sortBy: req.query.sortBy ?? 'name',
     limit: req.query.limit,
     page: req.query.page,
   };
