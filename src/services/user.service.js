@@ -59,7 +59,6 @@ const createUser = async (userData) => {
   // Check if user with the same email or phone exists
   const existingUser = await User.findOne({
     $or: [
-      { email: userData.email },
       { phone: userData.phone }
     ],
     deletedAt: null
