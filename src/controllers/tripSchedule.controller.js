@@ -68,30 +68,40 @@ const createSchedule = catchAsync(async (req, res) => {
     // Create schedule
     const tripSchedule = await tripScheduleService.createSchedule(req.body, req.user._id);
     
-  // Update trip requests to mark them as scheduled
-  for (const destination of req.body.destinations) {
-    if (destination.requestId) {
-      await tripRequestService.updateRequestLinkStatus(destination.requestId, tripSchedule.id);
+    // Update trip requests to mark them as scheduled
+    for (const destination of req.body.destinations) {
+      if (destination.requestId) {
+        await tripRequestService.updateRequestLinkStatus(destination.requestId, tripSchedule.id);
+      }
     }
-  }
 
-  const tripScheduleData = await tripScheduleService.getScheduleById(tripSchedule.id);
+    const tripScheduleData = await tripScheduleService.getScheduleById(tripSchedule.id);
 
-  //notify all schedulers-admins-super-admins
-  sendNotificationsToRoles(['scheduler', 'admin', 'super-admin'], ['receiveTripScheduledNotification'], 'New Trip Schedule', formatTripScheduleNotification(tripScheduleData), {
-    tripScheduleId: tripSchedule._id.toString()
-  }).catch(error => {
-    console.error('Send notification error:', error);
-  });
+    // Notify all schedulers-admins-super-admins
+    sendNotificationsToRoles(['scheduler', 'admin', 'super-admin'], ['receiveTripScheduledNotification'], 'New Trip Schedule', formatTripScheduleNotification(tripScheduleData), {
+      tripScheduleId: tripSchedule._id.toString()
+    }).catch(error => {
+      console.error('Send notification error:', error);
+    });
 
-  //notify requested person
-  sendNotificationsToIds([tripScheduleData.destinations?.[0]?.createdBy?.id?.toString()], [], 'Your Request is Scheduled', formatTripScheduleNotification(tripScheduleData), {
-    tripScheduleId: tripSchedule._id.toString()
-  }).catch(error => {
-    console.error('Send notification error:', error);
-  });
+    // Collect all requesters IDs
+    let requestedPersonIds = [];
+    tripScheduleData.destinations.forEach(dest => {
+      if (dest.createdBy) {
+        requestedPersonIds.push(dest.createdBy.id.toString());
+      }
+    });
+
+    // Notify requested person(s)
+    if (requestedPersonIds.length > 0) {
+      sendNotificationsToIds(requestedPersonIds, [], 'Your Request is Scheduled', formatTripScheduleNotification(tripScheduleData), {
+        tripScheduleId: tripSchedule._id.toString()
+      }).catch(error => {
+        console.error('Send notification error:', error);
+      });
+    }
   
-  res.status(status.CREATED).send(tripSchedule);
+    res.status(status.CREATED).send(tripSchedule);
   } catch (error) {
     throw new ApiError(status.UNKNOWN_ERROR, error.message);
   }
@@ -105,30 +115,32 @@ const updateSchedule = catchAsync(async (req, res) => {
   
   const tripSchedule = await tripScheduleService.updateSchedule(req.params.id, req.body, req.user._id);
 
-
-  //updated schedule
+  // Updated schedule
   const updatedSchedule = await tripScheduleService.getScheduleById(req.params.id);
 
-  //notify all schedulers-admins-super-admins
+  // Notify all schedulers-admins-super-admins
   sendNotificationsToRoles(['scheduler', 'admin', 'super-admin'], ['receiveTripScheduledNotification'], 'Trip Re-Scheduled', formatTripScheduleNotification(updatedSchedule), {
     tripScheduleId: tripSchedule.id.toString()
   }).catch(error => {
     console.error('Send notification error:', error);
   });
 
-  let requestedPersonIds=[];
-  tripSchedule.destinations.map(dest=>{
-    if(dest.createdBy){
+  // Collect all requesters IDs
+  let requestedPersonIds = [];
+  tripSchedule.destinations.forEach(dest => {
+    if (dest.createdBy) {
       requestedPersonIds.push(dest.createdBy.id.toString());
     }
   });
 
-  //notify requested person
-  sendNotificationsToIds(requestedPersonIds, [], 'Your Request is Re-Scheduled', formatTripScheduleNotification(updatedSchedule), {
-    tripScheduleId: tripSchedule.id.toString()
-  }).catch(error => {
-    console.error('Send notification error:', error);
-  });
+  // Notify requested person(s)
+  if (requestedPersonIds.length > 0) {
+    sendNotificationsToIds(requestedPersonIds, [], 'Your Request is Re-Scheduled', formatTripScheduleNotification(updatedSchedule), {
+      tripScheduleId: tripSchedule.id.toString()
+    }).catch(error => {
+      console.error('Send notification error:', error);
+    });
+  }
   
   res.send(tripSchedule);
 });

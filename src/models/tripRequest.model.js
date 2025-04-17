@@ -2,10 +2,10 @@ const mongoose = require('mongoose');
 const { toJSON, paginate } = require('./plugins');
 
 /**
- * Trip Request schema
+ * Destination Schema for nested documents in trip request
  * @private
  */
-const tripRequestSchema = mongoose.Schema(
+const destinationSchema = mongoose.Schema(
   {
     destination: {
       type: String,
@@ -16,18 +16,6 @@ const tripRequestSchema = mongoose.Schema(
       type: Boolean,
       default: false
     },
-    mapLink: {
-      type: String,
-      trim: true
-    },
-    dateTime: {
-      type: Date,
-      required: true
-    },
-    timeType: {
-      type: String,
-      enum: ['any', 'morning', 'afternoon', 'evening'],
-    },
     purpose: {
       type: mongoose.SchemaTypes.ObjectId,
       ref: 'TripPurpose',
@@ -36,6 +24,38 @@ const tripRequestSchema = mongoose.Schema(
     jobCardId: {
       type: String,
       trim: true
+    },
+    mapLink: {
+      type: String,
+      trim: true
+    }
+  },
+  { _id: true }
+);
+
+/**
+ * Trip Request schema
+ * @private
+ */
+const tripRequestSchema = mongoose.Schema(
+  {
+    destinations: {
+      type: [destinationSchema],
+      required: true,
+      validate: {
+        validator: function(v) {
+          return v && v.length > 0;
+        },
+        message: 'At least one destination is required'
+      }
+    },
+    dateTime: {
+      type: Date,
+      required: true
+    },
+    timeType: {
+      type: String,
+      enum: ['any', 'morning', 'afternoon', 'evening'],
     },
     noOfPeople: {
       type: Number,

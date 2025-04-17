@@ -2,6 +2,17 @@ const Joi = require('joi');
 const { objectId } = require('./custom.validator');
 
 /**
+ * Destination schema for creating/updating trip requests
+ */
+const destinationSchema = Joi.object({
+  destination: Joi.string().required().trim(),
+  isWaiting: Joi.boolean().optional().allow(null),
+  jobCardId: Joi.string().allow('', null),
+  mapLink: Joi.string().allow('', null),
+  purpose: Joi.custom(objectId).required(),
+});
+
+/**
  * Get trip requests validation schema
  */
 const getTripRequests = {
@@ -35,13 +46,9 @@ const getTripRequest = {
  */
 const createTripRequest = {
   body: Joi.object().keys({
-    destination: Joi.string().required().trim(),
-    isWaiting: Joi.boolean().optional().allow(null),
-    mapLink: Joi.string().allow('', null),
+    destinations: Joi.array().items(destinationSchema).min(1).required(),
     dateTime: Joi.date().iso().required(),
     timeType: Joi.string().valid('any', 'morning', 'afternoon', 'evening').optional().allow(null),
-    purpose: Joi.custom(objectId).required(),
-    jobCardId: Joi.string().allow('', null),
     noOfPeople: Joi.number().integer().required(),
     requiredVehicle: Joi.array().items(
       Joi.alternatives().try(
@@ -61,13 +68,9 @@ const updateTripRequest = {
   }),
   body: Joi.object()
     .keys({
-      destination: Joi.string().trim(),
-      isWaiting: Joi.boolean().optional().allow(null),
-      mapLink: Joi.string().allow('', null),
+      destinations: Joi.array().items(destinationSchema).min(1),
       dateTime: Joi.date().iso(),
       timeType: Joi.string().valid('any', 'morning', 'afternoon', 'evening').optional().allow(null),
-      purpose: Joi.custom(objectId),
-      jobCardId: Joi.string().allow('', null),
       noOfPeople: Joi.number().integer(),
       requiredVehicle: Joi.array().items(
         Joi.alternatives().try(

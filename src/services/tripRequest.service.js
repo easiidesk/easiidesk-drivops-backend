@@ -13,9 +13,18 @@ const mongoose = require('mongoose');
 const formatTripRequest = (tripRequest) => {
   const formatted = {
     _id: tripRequest._id,
-    destination: tripRequest.destination,
-    isWaiting: tripRequest.isWaiting,
-    mapLink: tripRequest.mapLink,
+    destinations: tripRequest.destinations.map(dest => ({
+      _id: dest._id,
+      destination: dest.destination,
+      isWaiting: dest.isWaiting,
+      jobCardId: dest.jobCardId || null,
+      mapLink: dest.mapLink || null,
+      purpose: dest.purpose ? {
+        id: dest.purpose._id,
+        name: dest.purpose.name,
+        jobCardNeeded: dest.purpose.jobCardNeeded
+      } : null
+    })),
     dateTime: tripRequest.dateTime,
     timeType: tripRequest.timeType,
     purpose: tripRequest.purpose ? {
@@ -89,7 +98,7 @@ const formatTripRequest = (tripRequest) => {
  */
 const getRawTripRequestById = async (id) => {
   const tripRequest = await TripRequest.findById(id)
-    .populate('purpose', 'name jobCardNeeded')
+    .populate('destinations.purpose', 'name jobCardNeeded')
     .populate({
       path: 'requiredVehicle',
       select: 'name'
@@ -199,9 +208,9 @@ const updateTripRequest = async (tripRequestId, updateBody, userId) => {
     tripRequestId,
     safeUpdateBody,
     { new: true }
-  ).populate('purpose', 'name jobCardNeeded')
-    .populate('requiredVehicle.vehicleId', 'name')
-    .populate('createdBy', 'name phone')
+  ).populate('destinations.purpose', 'name jobCardNeeded')
+   .populate('requiredVehicle.vehicleId', 'name')
+   .populate('createdBy', 'name phone')
     .populate({
       path: 'linkedTripId',
       populate: [
@@ -316,7 +325,7 @@ const getTripRequests = async (filter = {}, options = {}) => {
   
   // First get the trip requests without population
   const tripRequests = await TripRequest.find(filter)
-    .populate('purpose', 'name jobCardNeeded')
+    .populate('destinations.purpose', 'name jobCardNeeded')
     .populate('createdBy', 'name phone')
     .populate({
       path: 'linkedTripId',

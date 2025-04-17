@@ -64,15 +64,15 @@ const formatTripRequestNotification = (tripRequest) => {
       hour12: true
     }));
   }
-  if (tripRequest.destination) {
-    firstLineStingArray.push(tripRequest.destination);
+  if (tripRequest.destinations) {
+    firstLineStingArray.push(tripRequest.destinations.map(dest => dest.destination).join(', '));
   }
 
   notificationString += `• ${firstLineStingArray.join(' - ')}`;
   
   let secondLineStingArray = [];
-  if (tripRequest.purpose) {
-    secondLineStingArray.push(tripRequest.purpose.name);
+  if (tripRequest.destinations) {
+    secondLineStingArray.push(tripRequest.destinations.map(dest => dest.purpose.name).join(', '));
   }
   if (tripRequest.createdBy) {
     secondLineStingArray.push(tripRequest.createdBy.name);
@@ -107,9 +107,35 @@ const formatTripScheduleNotification = (tripSchedule) => {
     secondLineStingArray.push(tripSchedule.driver.name);
   }
 
-  secondLineStingArray.push(tripSchedule.destinations && tripSchedule.destinations.length > 1?"Connecting":"Direct");
+  // Check if there are multiple destinations
+  const destinationCount = tripSchedule.destinations ? tripSchedule.destinations.length : 0;
+  secondLineStingArray.push(destinationCount > 1 ? "Multiple Destinations" : "Single Destination");
   
   notificationString += `\n• ${secondLineStingArray.join(' - ')}`;
+
+  // Add destination information
+  if (destinationCount > 0) {
+    notificationString += '\n• Destinations:';
+    tripSchedule.destinations.forEach((dest, index) => {
+      // Handle different ways destination could be stored in the structure
+      let destinationInfo;
+      if (dest.destination) {
+        // Direct destination in tripSchedule
+        destinationInfo = dest.destination;
+      } else if (dest.requestId && typeof dest.requestId === 'object') {
+        // If requestId is populated and has destinations array
+        if (dest.requestId.destinations && dest.requestId.destinations.length > 0) {
+          destinationInfo = dest.requestId.destinations[0].destination;
+        } else {
+          destinationInfo = 'Unknown';
+        }
+      } else {
+        destinationInfo = 'Unknown';
+      }
+      
+      notificationString += `\n  ${index + 1}. ${destinationInfo}`;
+    });
+  }
 
   return notificationString;
 }

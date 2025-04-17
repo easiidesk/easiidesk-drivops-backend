@@ -31,15 +31,21 @@ const formatTripSchedule = (schedule) => {
     } : null,
     destinations: schedule.destinations.map(dest => {
       if (dest.requestId) {
-        // Case 1: When requestId exists
+        // Case 1: When requestId exists and is populated
+        const requestDestinations = dest.requestId.destinations || [];
         return {
           requestId: dest.requestId._id,
-          destination: dest.requestId.destination,
-          purpose: dest.requestId.purpose ? {
-            id: dest.requestId.purpose._id,
-            name: dest.requestId.purpose.name,
-            jobCardNeeded: dest.requestId.purpose.jobCardNeeded
-          } : null,
+          destinations: requestDestinations.map(rdest => ({
+            destination: rdest.destination,
+            isWaiting: rdest.isWaiting,
+            jobCardId: rdest.jobCardId,
+            mapLink: rdest.mapLink,
+            purpose: rdest.purpose ? {
+              id: rdest.purpose._id,
+              name: rdest.purpose.name,
+              jobCardNeeded: rdest.purpose.jobCardNeeded
+            } : null
+          })),
           tripStartTime: dest.tripStartTime,
           tripApproxArrivalTime: dest.tripApproxArrivalTime,
           tripPurposeTime: dest.tripPurposeTime,
@@ -104,10 +110,10 @@ const getSchedules = async (filter = {}, options = {}) => {
     .populate('destinations.destinationAddedBy', 'name email phone')
     .populate({
       path: 'destinations.requestId',
-      select: 'destination purpose jobCardId noOfPeople createdBy',
+      select: 'destinations jobCardId noOfPeople createdBy',
       populate: [
         {
-          path: 'purpose',
+          path: 'destinations.purpose',
           select: 'name jobCardNeeded',
           model: 'TripPurpose'
         },
@@ -147,13 +153,17 @@ const getScheduleById = async (id, formatted = true) => {
   const schedule = await TripSchedule.findOne({ _id: id, isActive: true, deletedAt: null })
     .populate('driverId', 'name email phone')
     .populate('vehicleId', 'name')
+    .populate('createdBy', 'name email phone')
+    .populate('destinations.purposeId', 'name jobCardNeeded')
+    .populate('destinations.destinationAddedBy', 'name email phone')
     .populate({
       path: 'destinations.requestId',
-      select: 'destination purpose jobCardId noOfPeople createdBy',
+      select: 'destinations jobCardId noOfPeople createdBy',
       populate: [
         {
-          path: 'purpose',
-          select: 'name jobCardNeeded'
+          path: 'destinations.purpose',
+          select: 'name jobCardNeeded',
+          model: 'TripPurpose'
         },
         {
           path: 'createdBy',
