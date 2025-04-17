@@ -67,11 +67,14 @@ const login = async (phone, password, fcmToken) => {
  * @returns {boolean} True if logout successful
  */
 const logout = async (userId, fcmToken) => {
-  // If FCM token is provided, clear it
+  // If FCM token is provided, remove it from array
   if (fcmToken) {
     await User.findOneAndUpdate(
-      { _id: userId, fcmToken },
-      { fcmToken: null, updatedAt: new Date() }
+      { _id: userId },
+      { 
+        $pull: { fcmTokens: fcmToken },
+        updatedAt: new Date()
+      }
     );
   }
   

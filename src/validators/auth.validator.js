@@ -13,7 +13,7 @@ const loginSchema = yup.object().shape({
  * Logout validation schema
  */
 const logoutSchema = yup.object().shape({
-  fcm_token: yup.string().nullable()
+  token: yup.string().nullable()
 });
 
 module.exports = {

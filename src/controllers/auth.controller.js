@@ -40,10 +40,10 @@ const login = async (req, res, next) => {
 const logout = async (req, res, next) => {
   try {
     const userId = req.user.userId;
-    const { fcm_token } = req.body;
+    const { token } = req.body;
     
     // Process logout
-    await authService.logout(userId, fcm_token);
+    await authService.logout(userId, token);
     
     // Return successful response
     return res.status(200).json(successResponse(null, 'Logout successful'));
