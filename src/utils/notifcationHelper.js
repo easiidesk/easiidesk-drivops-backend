@@ -109,33 +109,19 @@ const formatTripScheduleNotification = (tripSchedule) => {
 
   // Check if there are multiple destinations
   const destinationCount = tripSchedule.destinations ? tripSchedule.destinations.length : 0;
-  secondLineStingArray.push(destinationCount > 1 ? "Multiple Destinations" : "Single Destination");
+  secondLineStingArray.push(destinationCount > 1 ? "Connecting" : "Direct");
   
   notificationString += `\n• ${secondLineStingArray.join(' - ')}`;
 
-  // Add destination information
-  if (destinationCount > 0) {
     notificationString += '\n• Destinations:';
     tripSchedule.destinations.forEach((dest, index) => {
       // Handle different ways destination could be stored in the structure
       let destinationInfo;
-      if (dest.destination) {
-        // Direct destination in tripSchedule
-        destinationInfo = dest.destination;
-      } else if (dest.requestId && typeof dest.requestId === 'object') {
-        // If requestId is populated and has destinations array
-        if (dest.requestId.destinations && dest.requestId.destinations.length > 0) {
-          destinationInfo = dest.requestId.destinations[0].destination;
-        } else {
-          destinationInfo = 'Unknown';
-        }
-      } else {
-        destinationInfo = 'Unknown';
-      }
+      destinationInfo = dest.destinations && dest.destinations.map((e)=>e.destination).join(', ');
       
       notificationString += `\n  ${index + 1}. ${destinationInfo}`;
     });
-  }
+  
 
   return notificationString;
 }
