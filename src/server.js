@@ -49,7 +49,7 @@ const routes = {
 applyRoutes(app, routes);
 
 // Start server
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 4001;
 
 if (process.env.NODE_ENV !== 'test') {
   app.listen(PORT, () => {

@@ -11,7 +11,7 @@ const getVehicles = async (filters = {}, options = {}) => {
   const defaultOptions = {
     page: 1,
     limit: 10,
-    sort: { createdAt: -1 }
+    sort: { name: 1 }
   };
   
   const queryOptions = { ...defaultOptions, ...options };

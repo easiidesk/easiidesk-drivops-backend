@@ -12,9 +12,7 @@ dist/
 build/
 *.zip
 
-# Environment
-.env.*
-!.env.example
+
 
 # Logs
 logs/
