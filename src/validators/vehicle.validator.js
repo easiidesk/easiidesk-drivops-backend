@@ -11,7 +11,7 @@ const createVehicleSchema = yup.object().shape({
     .max(new Date().getFullYear() + 1, 'Year cannot be in the future'),
   licensePlate: yup.string().optional(),
   type: yup.string()
-    .oneOf(['car', 'truck'], 'Invalid vehicle type')
+    .oneOf(['car', 'van', 'truck'], 'Invalid vehicle type')
     .optional(),
   capacity: yup.number()
     .optional(),

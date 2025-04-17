@@ -1,4 +1,5 @@
 const User = require('../models/user.model');
+const {createSettings} = require('./notificationSettings.service');
 
 /**
  * Get all users service
@@ -71,6 +72,9 @@ const createUser = async (userData) => {
   // Create new user
   const user = new User(userData);
   await user.save();
+
+  // add usernotificationSettings
+  await createSettings(user._id, user.role);
   
   return user;
 };

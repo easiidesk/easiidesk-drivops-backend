@@ -96,8 +96,24 @@ const resetSettingsForRole = async (role) => {
   return { success: true, role, settings: defaultSettings };
 };
 
+const createSettings = async (userId, role) => {
+  let settings = await UserNotificationSettings.findOne({ userId, isActive: true, deletedAt: null });
+  if (settings) {
+    return settings;
+  }
+
+  const defaultSettings = getDefaultSettings(role);
+  const userNotificationSettings = await UserNotificationSettings.create({
+    userId,
+    settings: defaultSettings
+  });
+
+  return userNotificationSettings;
+};
+
 module.exports = {
   getSettings,
   updateSettings,
-  resetSettingsForRole
+  resetSettingsForRole,
+  createSettings
 }; 
