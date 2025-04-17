@@ -10,7 +10,7 @@ const { successResponse, errorResponse } = require('../common/responses/response
 const getVehicles = async (req, res, next) => {
   try {
     // Extract query parameters
-    const { page = 1, limit = 10, status, type, search } = req.query;
+    const { status, type, search } = req.query;
     
     // Build filters
     const filters = {};
@@ -31,9 +31,7 @@ const getVehicles = async (req, res, next) => {
     
     // Build options
     const options = {
-      page: parseInt(page, 10),
-      limit: parseInt(limit, 10),
-      sort: { createdAt: -1 }
+      sort: { 'name': 1 }
     };
     
     // Get vehicles

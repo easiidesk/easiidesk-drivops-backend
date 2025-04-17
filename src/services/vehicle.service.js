@@ -8,14 +8,7 @@ const User = require('../models/user.model');
  * @returns {Promise<Array>} List of vehicles with pagination
  */
 const getVehicles = async (filters = {}, options = {}) => {
-  const defaultOptions = {
-    page: 1,
-    limit: 10,
-    sort: { name: 1 }
-  };
-  
-  const queryOptions = { ...defaultOptions, ...options };
-  const skip = (queryOptions.page - 1) * queryOptions.limit;
+
   
   // Add default filter for non-deleted vehicles
   const queryFilters = {
@@ -25,19 +18,14 @@ const getVehicles = async (filters = {}, options = {}) => {
   
   const vehicles = await Vehicle.find(queryFilters)
     .populate('assignedDriver', 'name email phone')
-    .sort(queryOptions.sort)
-    .skip(skip)
-    .limit(queryOptions.limit);
+    .sort(options.sort)
   
   const total = await Vehicle.countDocuments(queryFilters);
   
   return {
     vehicles,
     pagination: {
-      total,
-      page: queryOptions.page,
-      limit: queryOptions.limit,
-      pages: Math.ceil(total / queryOptions.limit)
+      total
     }
   };
 };
