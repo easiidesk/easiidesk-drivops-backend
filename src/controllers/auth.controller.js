@@ -39,7 +39,7 @@ const login = async (req, res, next) => {
  */
 const logout = async (req, res, next) => {
   try {
-    const userId = req.user.userId;
+    const userId = req.user._id;
     const { token } = req.body;
     
     // Process logout

@@ -44,8 +44,7 @@ const login = async (phone, password, fcmToken) => {
   // Generate JWT token
   const token = jwt.sign(
     { userId: user._id.toString() },
-    config.JWT_SECRET,
-    { expiresIn: '24h' }
+    config.JWT_SECRET
   );
   
   // Return user data and token
