@@ -127,7 +127,7 @@ const updateSchedule = catchAsync(async (req, res) => {
 
   // Collect all requesters IDs
   let requestedPersonIds = [];
-  tripSchedule.destinations.forEach(dest => {
+  updatedSchedule.destinations.forEach(dest => {
     if (dest.createdBy) {
       requestedPersonIds.push(dest.createdBy.id.toString());
     }
@@ -182,6 +182,33 @@ const cancelSchedule = catchAsync(async (req, res) => {
   }
   
   await tripScheduleService.cancelSchedule(req.params.id, req.user._id);
+
+  const cancelledSchedule = await tripScheduleService.getScheduleById(req.params.id);
+
+  // Notify all schedulers-admins-super-admins
+  sendNotificationsToRoles(['scheduler', 'admin', 'super-admin'], ['receiveTripScheduledNotification'], 'Trip Cancelled', formatTripScheduleNotification(cancelledSchedule), {
+    tripScheduleId: cancelledSchedule.id.toString()
+  }).catch(error => {
+    console.error('Send notification error:', error);
+  });
+
+  // Collect all requesters IDs
+  let requestedPersonIds = [];
+  cancelledSchedule.destinations.forEach(dest => {
+    if (dest.createdBy) {
+      requestedPersonIds.push(dest.createdBy.id.toString());
+    }
+  });
+
+  // Notify requested person(s)
+  if (requestedPersonIds.length > 0) {
+    sendNotificationsToIds(requestedPersonIds, [], 'Your Request is Cancelled', formatTripScheduleNotification(cancelledSchedule), {
+      tripScheduleId: cancelledSchedule.id.toString()
+    }).catch(error => {
+      console.error('Send notification error:', error);
+    });
+  }
+
   res.status(status.NO_CONTENT).send();
 });
 
