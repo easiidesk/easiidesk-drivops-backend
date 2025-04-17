@@ -17,6 +17,7 @@ const tripPurposeRoutes = require('./routes/tripPurpose.route');
 const dashboardRoutes = require('./routes/dashboard.route');
 const notificationRoutes = require('./routes/notification.route');
 const userNotificationRoutes = require('./routes/userNotification.route');
+const driverAttendanceRoutes = require('./routes/driverAttendance.route');
 
 // Initialize Express application
 const app = initializeApp();
@@ -42,7 +43,8 @@ const routes = {
   'trip-purposes': tripPurposeRoutes,
   'dashboard': dashboardRoutes,
   'notifications': notificationRoutes,
-  'notification-settings': userNotificationRoutes
+  'notification-settings': userNotificationRoutes,
+  'driver-attendance': driverAttendanceRoutes
 };
 
 // Apply routes to application

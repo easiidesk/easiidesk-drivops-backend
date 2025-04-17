@@ -1,7 +1,6 @@
 const Trip = require('../models/trip.model');
-const Driver = require('../models/driver.model');
-const Vehicle = require('../models/vehicle.model');
 const User = require('../models/user.model');
+const Vehicle = require('../models/vehicle.model');
 
 /**
  * Get all trips with optional filters and pagination
@@ -181,8 +180,9 @@ const getTripsByVehicle = async (vehicleId, options = {}) => {
  */
 const createTrip = async (tripData, userId) => {
   // Check if driver exists and is active
-  const driver = await Driver.findOne({ 
+  const driver = await User.findOne({ 
     _id: tripData.driver, 
+    role: 'driver',
     isActive: true, 
     deletedAt: null 
   });
@@ -377,8 +377,9 @@ const updateTrip = async (id, updateData) => {
     
     // If driver is changed, check if new driver exists and is active
     if (updateData.driver && updateData.driver !== trip.driver.toString()) {
-      const driver = await Driver.findOne({ 
+      const driver = await User.findOne({ 
         _id: updateData.driver, 
+        role: 'driver',
         isActive: true, 
         deletedAt: null 
       });
@@ -473,8 +474,8 @@ const updateTripStatus = async (id, status, statusData = {}) => {
     }
     
     // Update driver's total trips count
-    await Driver.findByIdAndUpdate(
-      trip.driver,
+    await User.findOneAndUpdate(
+      { _id: trip.driver, role: 'driver' },
       { $inc: { totalTrips: 1 } }
     );
   }
@@ -484,14 +485,14 @@ const updateTripStatus = async (id, status, statusData = {}) => {
   
   // If trip is cancelled or completed, driver available again
   if (status === 'cancelled' || status === 'completed') {
-    await Driver.findByIdAndUpdate(
-      trip.driver,
+    await User.findOneAndUpdate(
+      { _id: trip.driver, role: 'driver' },
       { isAvailable: true }
     );
   } else if (status === 'in_progress') {
     // If trip is in progress, mark driver as unavailable
-    await Driver.findByIdAndUpdate(
-      trip.driver,
+    await User.findOneAndUpdate(
+      { _id: trip.driver, role: 'driver' },
       { isAvailable: false }
     );
   }

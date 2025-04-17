@@ -1,6 +1,7 @@
 const User = require('../models/user.model');
 const NotificationService = require('../common/services/notification.service');
 const { UserNotificationSettings } = require('../models');
+const {DriverAttendance} = require('../models');
 const sendNotificationsToRoles = async (roles, notificationTypeList, title, message, data) => {
   let tokensToSendNotification = [];
   const users = await User.find({ role: { $in: roles } });
@@ -125,10 +126,51 @@ const formatTripScheduleNotification = (tripSchedule) => {
 
   return notificationString;
 }
+
+const formatDriverPunchInNotification = (driverName) => {
+  return `• ${driverName} has punched in`;
+}
+
+const formatDriverPunchOutNotification = async (attendance,driverId,driverName) => {
+    // Get all attendance records that might be relevant
+    const lastPunchInDate = attendance.punches[attendance.punches.length - 1].inTime;
+    const startOfLastPunchInDay = new Date(lastPunchInDate);
+    startOfLastPunchInDay.setHours(0, 0, 0, 0);
+
+    // Calculate total time for the period
+    let totalTimeInMinutes = 0;
+    const attendanceRecords = await DriverAttendance.find( {
+        driverId,
+        date: { $gte: startOfLastPunchInDay },
+        isActive: true
+      }
+    );
+
+    // Calculate total time across all relevant days
+    for (const record of attendanceRecords) {
+      for (const punch of record.punches) {
+        if (punch.inTime && punch.outTime) {
+          const punchDuration = (punch.outTime - punch.inTime) / (1000 * 60); // Convert to minutes
+          totalTimeInMinutes += punchDuration;
+        }
+      }
+    }
+
+    // Format the time
+    const hours = Math.floor(totalTimeInMinutes / 60);
+    const minutes = Math.floor(totalTimeInMinutes % 60);
+    const timeString = `${hours}h ${minutes}m`;
+
+
+  return `• ${driverName} has punched out.\n• Total time: ${timeString}`;
+}
+
 module.exports = {
   sendNotificationsToRoles,
   sendNotificationsToIds,
   formatTripRequestNotification,
-  formatTripScheduleNotification
+  formatTripScheduleNotification,
+  formatDriverPunchInNotification,
+  formatDriverPunchOutNotification
 }
 
