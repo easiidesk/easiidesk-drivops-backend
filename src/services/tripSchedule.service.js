@@ -138,7 +138,7 @@ const getSchedules = async (filter = {}, options = {}) => {
       page: pagination.page,
       limit: pagination.limit,
       totalResults: total,
-      totalPages: Math.ceil(total / pagination.limit)
+      totalPages: pagination.pagination==false?1:Math.ceil(total / pagination.limit)
     }
   };
 };
@@ -188,8 +188,8 @@ const getScheduleById = async (id, formatted = true) => {
 const createSchedule = async (scheduleBody, userId) => {
   scheduleBody.createdBy = userId;
   scheduleBody.status = 'scheduled';
-  scheduleBody.tripStartTime = new Date(scheduleBody.tripStartTime);
-  scheduleBody.tripApproxArrivalTime = scheduleBody.tripApproxArrivalTime ? new Date(scheduleBody.tripApproxArrivalTime) : null;
+  scheduleBody.tripStartTime = new Date(scheduleBody.tripStartTime).toUTCString();
+  scheduleBody.tripApproxArrivalTime = scheduleBody.tripApproxArrivalTime ? new Date(scheduleBody.tripApproxArrivalTime).toUTCString() : null;
   return TripSchedule.create(scheduleBody);
   };
 
@@ -206,24 +206,25 @@ const updateSchedule = async (scheduleId, updateBody, userId) => {
   const updatedRequestIds=updateBody.destinations.map(dest=>dest.requestId);
   const newlyAddedRequestIds=updatedRequestIds.filter(id=>!existingRequestIds.includes(id));
   const deletedRequestIds=existingRequestIds.filter(id=>!updatedRequestIds.includes(id));
-
-
-  let updatedTripStartTime;
-  let updatedTripApproxArrivalTime;
+  // Initialize with first destination's times
+  let updatedTripStartTime = new Date(updateBody.destinations[0].tripStartTime);
+  let updatedTripApproxArrivalTime = new Date(updateBody.destinations[0].tripApproxArrivalTime);
 
   updateBody.destinations.forEach(dest => {
-    if (dest.tripStartTime < updatedTripStartTime) {
-      updatedTripStartTime = dest.tripStartTime;
+    const destStartTime = new Date(dest.tripStartTime);
+    const destArrivalTime = new Date(dest.tripApproxArrivalTime);
+
+    if (destStartTime < updatedTripStartTime) {
+      updatedTripStartTime = destStartTime;
     }
-    if (dest.tripApproxArrivalTime > updatedTripApproxArrivalTime) {
-      updatedTripApproxArrivalTime = dest.tripApproxArrivalTime;
+    if (destArrivalTime > updatedTripApproxArrivalTime) {
+      updatedTripApproxArrivalTime = destArrivalTime;
     }
 
     if(!dest.requestId){
-      dest.destinationAddedBy=userId;
-      dest.destinationAddedAt=new Date();
+      dest.destinationAddedBy = userId;
+      dest.destinationAddedAt = new Date();
     }
-    
   });
 
   // Don't allow updating certain fields
@@ -235,8 +236,8 @@ const updateSchedule = async (scheduleId, updateBody, userId) => {
   Object.assign(schedule, safeUpdateBody);
  
 
-  schedule.tripStartTime = updatedTripStartTime;
-  schedule.tripApproxArrivalTime = updatedTripApproxArrivalTime;
+  schedule.tripStartTime = updatedTripStartTime.toUTCString();
+  schedule.tripApproxArrivalTime = updatedTripApproxArrivalTime.toUTCString();
 
  
    //find trip requests by ids and update status to 'scheduled'

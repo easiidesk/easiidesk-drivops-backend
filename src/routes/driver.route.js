@@ -61,6 +61,50 @@ router.get('/', authorize(['requestor','scheduler','cost-analyst','admin', 'supe
 
 /**
  * @swagger
+ * /driver/schedules:
+ *   get:
+ *     summary: Get driver's schedules
+ *     tags: [Drivers]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [scheduled, started, completed, cancelled]
+ *         description: Filter by schedule status
+ *       - in: query
+ *         name: date
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Filter by date (YYYY-MM-DD)
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: Number of items per page
+ *     responses:
+ *       200:
+ *         description: List of driver's schedules
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: No schedules found
+ */
+router.get('/schedules', authorize(['driver']), driverController.getDriverSchedules);
+
+
+/**
+ * @swagger
  * /drivers/{id}:
  *   get:
  *     summary: Get driver by ID
@@ -315,5 +359,6 @@ router.put('/:driverId/documents/:documentId/verify', authorize(['admin', 'super
  *         description: Forbidden - insufficient permissions
  */
 router.delete('/:id', authorize(['admin', 'super-admin']), validateParams(driverIdParamSchema), driverController.deleteDriver);
+
 
 module.exports = router; 

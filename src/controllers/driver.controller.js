@@ -1,5 +1,7 @@
 const driverService = require('../services/driver.service');
 const { successResponse, errorResponse } = require('../common/responses/response.utils');
+const tripScheduleService = require('../services/tripSchedule.service');
+const catchAsync = require('../utils/catchAsync');
 
 /**
  * Get all drivers
@@ -230,6 +232,40 @@ const deleteDriver = async (req, res, next) => {
   }
 };
 
+/**
+ * Get schedules for the logged-in driver
+ * @route GET /api/driver/schedules
+ * @access Private - Driver
+ */
+const getDriverSchedules = catchAsync(async (req, res) => {
+  const { date} = req.query;
+  
+  // Create filter based on driver ID and optional parameters
+  const filter = { driverId: req.user._id , status: 'scheduled'};
+
+  
+  // Add date filter if provided
+  if (date) {
+    const startDate = new Date(date);
+    startDate.setHours(0, 0, 0, 0);
+    
+    const endDate = new Date(date);
+    endDate.setHours(23, 59, 59, 999);
+    
+    filter.tripStartTime = { $gte: startDate, $lte: endDate };
+  }
+  
+  // Setup pagination options
+  const options = {
+    sortBy: { tripStartTime: 1 } // Sort by trip start time ascending
+  };
+  
+  // Call the trip schedule service to get the driver's schedules
+  const result = await tripScheduleService.getSchedules(filter, options);
+  
+  return res.json(result);
+});
+
 module.exports = {
   getDrivers,
   getDriver,
@@ -239,5 +275,6 @@ module.exports = {
   updateDriverStatus,
   addDocument,
   verifyDocument,
-  deleteDriver
+  deleteDriver,
+  getDriverSchedules
 }; 
