@@ -196,6 +196,36 @@ const resetPassword = async (id, password) => {
   return user;
 };
 
+/**
+ * Update user's FCM token
+ * @param {string} userId - User ID
+ * @param {string} fcmToken - FCM token to add
+ * @param {string[]} [invalidTokens] - Optional array of invalid tokens to remove
+ * @returns {Promise<Object>} Updated user
+ */
+const updateFcmToken = async (userId, fcmToken, invalidTokens = []) => {
+  // Check if user exists
+  const user = await User.findOne({ _id: userId, deletedAt: null });
+  if (!user) {
+    throw new Error('User not found');
+  }
+  
+  // Add the new token if it doesn't exist already
+  if (fcmToken && !user.fcmTokens.includes(fcmToken)) {
+    user.fcmTokens.push(fcmToken);
+  }
+  
+  // Remove any invalid tokens
+  if (invalidTokens && invalidTokens.length > 0) {
+    user.fcmTokens = user.fcmTokens.filter(token => !invalidTokens.includes(token));
+  }
+  
+  user.updatedAt = new Date();
+  await user.save();
+  
+  return user;
+};
+
 module.exports = {
   getUsers,
   getUserById,
@@ -203,5 +233,6 @@ module.exports = {
   updateUser,
   deleteUser,
   changePassword,
-  resetPassword
+  resetPassword,
+  updateFcmToken
 }; 

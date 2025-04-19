@@ -47,10 +47,19 @@ const userIdParamSchema = yup.object().shape({
   id: yup.string().required('User ID is required')
 });
 
+/**
+ * Update FCM Token validation schema
+ */
+const updateFcmTokenSchema = yup.object().shape({
+  fcmToken: yup.string().required('FCM token is required'),
+  invalidTokens: yup.array().of(yup.string()).optional().nullable()
+});
+
 module.exports = {
   createUserSchema,
   updateUserSchema,
   changePasswordSchema,
   resetPasswordSchema,
-  userIdParamSchema
+  userIdParamSchema,
+  updateFcmTokenSchema
 }; 

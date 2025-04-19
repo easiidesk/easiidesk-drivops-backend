@@ -85,6 +85,10 @@ const tripRequestSchema = mongoose.Schema(
       enum: ['pending', 'scheduled', 'cancelled'],
       default: 'pending'
     },
+    remarks: {
+      type: String,
+      default: null
+    },
     cancelRemarks: {
       type: String,
       default: null

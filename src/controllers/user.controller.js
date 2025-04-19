@@ -236,6 +236,30 @@ const deleteUser = async (req, res, next) => {
   }
 };
 
+/**
+ * Update FCM Token
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @param {Function} next - Express next function
+ */
+const updateFcmToken = async (req, res, next) => {
+  try {
+    const userId = req.user._id;
+    const { fcmToken, invalidTokens = [] } = req.body;
+    
+    // Update FCM token
+    await userService.updateFcmToken(userId, fcmToken, invalidTokens);
+    
+    return res.status(200).json(successResponse(null, 'FCM token updated successfully'));
+  } catch (err) {
+    if (err.message === 'User not found') {
+      return res.status(404).json(errorResponse(err.message, 404));
+    }
+    
+    next(err);
+  }
+};
+
 module.exports = {
   getUsers,
   getUser,
@@ -245,5 +269,6 @@ module.exports = {
   updateProfile,
   changePassword,
   resetPassword,
-  deleteUser
+  deleteUser,
+  updateFcmToken
 }; 

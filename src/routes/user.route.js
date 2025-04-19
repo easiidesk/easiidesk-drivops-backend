@@ -7,7 +7,8 @@ const {
   updateUserSchema,
   changePasswordSchema,
   resetPasswordSchema,
-  userIdParamSchema
+  userIdParamSchema,
+  updateFcmTokenSchema
 } = require('../validators/user.validator');
 
 const router = express.Router();
@@ -91,6 +92,41 @@ router.put('/me', validateRequest(updateUserSchema), userController.updateProfil
  *         description: Current password is incorrect
  */
 router.put('/me/change-password', validateRequest(changePasswordSchema), userController.changePassword);
+
+/**
+ * @swagger
+ * /users/me/fcm-token:
+ *   post:
+ *     summary: Update user's FCM token for push notifications
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - fcmToken
+ *             properties:
+ *               fcmToken:
+ *                 type: string
+ *                 description: The Firebase Cloud Messaging token for the user's device
+ *               invalidTokens:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 description: Optional array of invalid tokens to remove
+ *     responses:
+ *       200:
+ *         description: FCM token updated successfully
+ *       400:
+ *         description: Invalid request data
+ *       401:
+ *         description: Unauthorized
+ */
+router.post('/me/fcm-token', validateRequest(updateFcmTokenSchema), userController.updateFcmToken);
 
 // Admin routes - require admin privileges
 /**

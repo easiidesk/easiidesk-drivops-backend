@@ -188,10 +188,70 @@ const getScheduleById = async (id, formatted = true) => {
 const createSchedule = async (scheduleBody, userId) => {
   scheduleBody.createdBy = userId;
   scheduleBody.status = 'scheduled';
-  scheduleBody.tripStartTime = new Date(scheduleBody.tripStartTime).toUTCString();
-  scheduleBody.tripApproxArrivalTime = scheduleBody.tripApproxArrivalTime ? new Date(scheduleBody.tripApproxArrivalTime).toUTCString() : null;
+
+  //calculate trip start time and trip approx arrival time
+  // Initialize with first destination's times
+  let tripStartTime = new Date(scheduleBody.destinations[0].tripStartTime);
+  let tripApproxArrivalTime = scheduleBody.destinations[0].tripApproxArrivalTime ? new Date(scheduleBody.destinations[0].tripApproxArrivalTime) : null;
+
+  scheduleBody.destinations.forEach(dest => {
+    const destStartTime = new Date(dest.tripStartTime);
+    const destArrivalTime = dest.tripApproxArrivalTime ? new Date(dest.tripApproxArrivalTime) : null;
+
+    if (destStartTime < tripStartTime) {
+      tripStartTime = destStartTime;
+    }
+    if (destArrivalTime && destArrivalTime > tripApproxArrivalTime) {
+      tripApproxArrivalTime = destArrivalTime;
+    }
+
+    if(!dest.requestId){
+      dest.destinationAddedBy = userId;
+      dest.destinationAddedAt = new Date();
+    }
+  });
+  
+  // Check vehicle and driver availability before creating the schedule
+  // If isForceSchedule is true, skip availability check
+  if (!scheduleBody.isForceSchedule) {
+    const { isAvailable, conflictingSchedules } = await checkAvailability(
+      scheduleBody.vehicleId,
+      scheduleBody.driverId,
+      tripStartTime,
+      tripApproxArrivalTime
+    );
+    
+    if (!isAvailable) {
+      const conflictDetails = conflictingSchedules.map(s => ({
+        id: s._id,
+        driver: s.driverId?.name || 'Unknown driver',
+        vehicle: s.vehicleId?.name || 'Unknown vehicle',
+        time: `${new Date(s.destinations[0]?.tripStartTime).toISOString()} to ${new Date(s.destinations[s.destinations.length-1]?.tripApproxArrivalTime).toISOString()}`
+      }));
+      
+      // Determine what's conflicting
+      const vehicleConflicts = conflictingSchedules.filter(s => s.vehicleId && s.vehicleId._id.toString() === scheduleBody.vehicleId.toString());
+      const driverConflicts = conflictingSchedules.filter(s => s.driverId && s.driverId._id.toString() === scheduleBody.driverId.toString());
+      
+      let conflictMessage = '';
+      if (vehicleConflicts.length > 0 && driverConflicts.length > 0) {
+        conflictMessage = 'vehicle-driver';
+      } else if (vehicleConflicts.length > 0) {
+        conflictMessage = 'vehicle';
+      } else if (driverConflicts.length > 0) {
+        conflictMessage = 'driver';
+      } else {
+        conflictMessage = 'resource';
+      }
+      
+      throw new ApiError(status.CONFLICT, conflictMessage, { conflictingSchedules });
+    }
+  }
+  
+  scheduleBody.tripStartTime = tripStartTime;
+  scheduleBody.tripApproxArrivalTime = tripApproxArrivalTime;
   return TripSchedule.create(scheduleBody);
-  };
+};
 
 /**
  * Update trip schedule by id
@@ -227,27 +287,56 @@ const updateSchedule = async (scheduleId, updateBody, userId) => {
     }
   });
 
+  // Check vehicle and driver availability before updating the schedule
+  // If isForceSchedule is true, skip availability check
+  if (!updateBody.isForceSchedule) {
+    const vehicleId = updateBody.vehicleId || schedule.vehicleId;
+    const driverId = updateBody.driverId || schedule.driverId;
+    
+    const { isAvailable, conflictingSchedules } = await checkAvailability(
+      vehicleId,
+      driverId,
+      updatedTripStartTime,
+      updatedTripApproxArrivalTime,
+      scheduleId // Exclude current schedule from availability check
+    );
+    
+    if (!isAvailable) {
+      // Determine what's conflicting
+      const vehicleConflicts = conflictingSchedules.filter(s => s.vehicleId && s.vehicleId._id.toString() === vehicleId.toString());
+      const driverConflicts = conflictingSchedules.filter(s => s.driverId && s.driverId._id.toString() === driverId.toString());
+      
+      let conflictMessage = '';
+      if (vehicleConflicts.length > 0 && driverConflicts.length > 0) {
+        conflictMessage = 'vehicle-driver';
+      } else if (vehicleConflicts.length > 0) {
+        conflictMessage = 'vehicle';
+      } else if (driverConflicts.length > 0) {
+        conflictMessage = 'driver';
+      } else {
+        conflictMessage = 'resource';
+      }
+      
+      throw new ApiError(status.CONFLICT, conflictMessage, { conflictingSchedules });
+    }
+  }
+
   // Don't allow updating certain fields
   const safeUpdateBody = { ...updateBody };
   delete safeUpdateBody.createdAt;
-
-
   
   Object.assign(schedule, safeUpdateBody);
  
-
   schedule.tripStartTime = updatedTripStartTime.toUTCString();
   schedule.tripApproxArrivalTime = updatedTripApproxArrivalTime.toUTCString();
-
- 
-   //find trip requests by ids and update status to 'scheduled'
-   await TripRequest.updateMany({_id:{$in:newlyAddedRequestIds}},{$set:{status:'scheduled', linkedTripId: schedule._id}});
-   //find trip requests by ids and update status to 'pending', 'cancelled'
-   await TripRequest.updateMany({_id:{$in:deletedRequestIds}},{$set:{status:'pending',linkedTripId:null}});
+  
+  //find trip requests by ids and update status to 'scheduled'
+  await TripRequest.updateMany({_id:{$in:newlyAddedRequestIds}},{$set:{status:'scheduled', linkedTripId: schedule._id}});
+  //find trip requests by ids and update status to 'pending', 'cancelled'
+  await TripRequest.updateMany({_id:{$in:deletedRequestIds}},{$set:{status:'pending',linkedTripId:null}});
 
   await schedule.save();
  
-
   return formatTripSchedule(schedule); // Return formatted data
 };
 
@@ -319,17 +408,29 @@ const getSchedulesByVehicle = async (vehicleId, options = {}) => {
  * @returns {Promise<{isAvailable: boolean, conflictingSchedules: TripSchedule[]}>}
  */
 const checkAvailability = async (vehicleId, driverId, startTime, endTime, excludeScheduleId = null) => {
+  // If either startTime or endTime is null, consider as available
+  if (!startTime || !endTime) {
+    return {
+      isAvailable: true,
+      conflictingSchedules: []
+    };
+  }
+
   const dateFilter = {
     $or: [
       // Schedule start time falls within the requested range
-      { 'destinations.tripStartTime': { $gte: startTime, $lte: endTime } },
+      { 
+        'destinations.tripStartTime': { $ne: null, $gte: startTime, $lte: endTime } 
+      },
       // Schedule end time falls within the requested range
-      { 'destinations.tripApproxArrivalTime': { $gte: startTime, $lte: endTime } },
+      { 
+        'destinations.tripApproxArrivalTime': { $ne: null, $gte: startTime, $lte: endTime } 
+      },
       // Schedule encompasses the requested range
       {
         $and: [
-          { 'destinations.tripStartTime': { $lte: startTime } },
-          { 'destinations.tripApproxArrivalTime': { $gte: endTime } }
+          { 'destinations.tripStartTime': { $ne: null, $lte: startTime } },
+          { 'destinations.tripApproxArrivalTime': { $ne: null, $gte: endTime } }
         ]
       }
     ]
@@ -353,12 +454,57 @@ const checkAvailability = async (vehicleId, driverId, startTime, endTime, exclud
 
   // Find conflicting schedules
   const conflictingSchedules = await TripSchedule.find(filter)
-    .populate('driverId', 'name')
-    .populate('vehicleId', 'name licensePlate');
+    .populate('driverId', 'name email phone')
+    .populate('vehicleId', 'name licensePlate color')
+    .populate({
+      path: 'destinations.requestId',
+      select: 'destinations jobCardId noOfPeople',
+      populate: {
+        path: 'destinations.purpose',
+        select: 'name jobCardNeeded',
+        model: 'TripPurpose'
+      }
+    })
+    .populate('destinations.purposeId', 'name jobCardNeeded');
 
   return {
     isAvailable: conflictingSchedules.length === 0,
-    conflictingSchedules
+    conflictingSchedules: conflictingSchedules.map(schedule => ({
+      _id: schedule._id,
+      driverId: schedule.driverId,
+      vehicleId: schedule.vehicleId,
+      status: schedule.status,
+      tripStartTime: schedule.tripStartTime,
+      tripApproxArrivalTime: schedule.tripApproxArrivalTime,
+      destinations: schedule.destinations.map(dest => ({
+        tripStartTime: dest.tripStartTime,
+        tripApproxArrivalTime: dest.tripApproxArrivalTime,
+        destination: dest.destination,
+        jobCardId: dest.requestId?.jobCardId || null,
+        tripPurposeTime: dest.tripPurposeTime || null,
+        purpose: dest.purposeId ? {
+          id: dest.purposeId._id,
+          name: dest.purposeId.name,
+          jobCardNeeded: dest.purposeId.jobCardNeeded
+        } : null,
+        requestId: dest.requestId ? {
+          _id: dest.requestId._id,
+          jobCardId: dest.requestId.jobCardId,
+          noOfPeople: dest.requestId.noOfPeople,
+          destinations: dest.requestId.destinations?.map(reqDest => ({
+            destination: reqDest.destination,
+            jobCardId: reqDest.jobCardId || null,
+            isWaiting: reqDest.isWaiting || false,
+            mapLink: reqDest.mapLink || null,
+            purpose: reqDest.purpose ? {
+              id: reqDest.purpose._id,
+              name: reqDest.purpose.name,
+              jobCardNeeded: reqDest.purpose.jobCardNeeded
+            } : null
+          }))
+        } : null
+      }))
+    }))
   };
 };
 

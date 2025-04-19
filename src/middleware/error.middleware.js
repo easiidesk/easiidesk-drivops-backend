@@ -28,10 +28,11 @@ const errorHandler = (err, req, res, next) => {
   // Check if error has status code
   const statusCode = err.statusCode || 500;
   const message = err.message || 'Internal Server Error';
+  const data = err.data || null;
 
   // Send error response
   return res.status(statusCode).json(
-    errorResponse(message, statusCode)
+    errorResponse(message, statusCode, data)
   );
 };
 

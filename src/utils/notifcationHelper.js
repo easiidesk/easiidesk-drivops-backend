@@ -2,6 +2,7 @@ const User = require('../models/user.model');
 const NotificationService = require('../common/services/notification.service');
 const { UserNotificationSettings } = require('../models');
 const {DriverAttendance} = require('../models');
+const { convertUTCToDubaiTime } = require('../common/helpers/time_helper');
 const sendNotificationsToRoles = async (roles, notificationTypeList, title, message, data) => {
   let tokensToSendNotification = [];
   const users = await User.find({ role: { $in: roles } });
@@ -56,7 +57,7 @@ const formatTripRequestNotification = (tripRequest) => {
 
   let firstLineStingArray = [];
   if (tripRequest.dateTime) {
-    firstLineStingArray.push(new Date(tripRequest.dateTime).toLocaleString('en-US', { 
+    firstLineStingArray.push(convertUTCToDubaiTime(tripRequest.dateTime).toLocaleString('en-US', { 
       day: 'numeric', 
       month: 'long', 
       year: 'numeric',
@@ -88,7 +89,7 @@ const formatTripScheduleNotification = (tripSchedule) => {
   let notificationString = '';
   let firstLineStingArray = [];
   if (tripSchedule.tripStartTime) {
-    firstLineStingArray.push(new Date(tripSchedule.tripStartTime).toLocaleString('en-US', { 
+    firstLineStingArray.push(convertUTCToDubaiTime(tripSchedule.tripStartTime).toLocaleString('en-US', { 
       day: 'numeric', 
       month: 'long', 
       year: 'numeric',

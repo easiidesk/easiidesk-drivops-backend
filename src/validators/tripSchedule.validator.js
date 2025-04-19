@@ -49,6 +49,7 @@ const createSchedule = {
     driverId: Joi.custom(objectId).required(),
     vehicleId: Joi.custom(objectId).required(),
     destinations: Joi.array().items(destinationSchema).min(1).required(),
+    isForceSchedule: Joi.boolean().optional().allow(null),
   }),
 };
 
@@ -65,6 +66,7 @@ const updateSchedule = {
       vehicleId: Joi.custom(objectId),
       destinations: Joi.array().items(destinationSchema).min(1),
       isActive: Joi.boolean(),
+      isForceSchedule: Joi.boolean().optional().allow(null),
     })
     .min(1),
 };

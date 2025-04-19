@@ -56,6 +56,7 @@ const createTripRequest = {
         Joi.string().valid('Any Car', 'Any Van', 'Any Truck')
       )
     ).min(1).required(),
+    remarks: Joi.string().allow('', null).optional(),
   }),
 };
 
@@ -80,6 +81,7 @@ const updateTripRequest = {
       ).min(1),
       status: Joi.string().valid('pending', 'scheduled', 'cancelled'),
       cancelRemarks: Joi.string().allow('', null).optional(),
+      remarks: Joi.string().allow('', null).optional(),
     })
     .min(1),
 };

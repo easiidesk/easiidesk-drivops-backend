@@ -75,6 +75,12 @@ const tripScheduleSchema = mongoose.Schema(
         message: 'At least one destination is required'
       }
     },
+    tripStartTime: {
+      type: Date,
+    },
+    tripApproxArrivalTime: {
+      type: Date
+    },
     isActive: {
       type: Boolean,
       default: true

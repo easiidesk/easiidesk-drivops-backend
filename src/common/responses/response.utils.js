@@ -18,18 +18,22 @@ const successResponse = (data, message = 'Success', statusCode = 200) => {
  * Format error response
  * @param {string} message - Error message
  * @param {number} statusCode - HTTP status code
- * @param {Object} errors - Validation errors
+ * @param {Object} errors - Validation errors or additional data
  * @returns {Object} Formatted error response
  */
-const errorResponse = (message = 'Error', statusCode = 500, errors = null) => {
+const errorResponse = (message = 'Error', statusCode = 500, data = null) => {
   const response = {
     success: false,
     message,
     statusCode
   };
   
-  if (errors) {
-    response.errors = errors;
+  if (data) {
+    if (typeof data === 'object' && data.hasOwnProperty('errors')) {
+      response.errors = data.errors;
+    } else {
+      response.data = data;
+    }
   }
   
   return response;

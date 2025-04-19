@@ -103,6 +103,9 @@ const createSchedule = catchAsync(async (req, res) => {
   
     res.status(status.CREATED).send(tripSchedule);
   } catch (error) {
+    if(error instanceof ApiError){
+      throw error;
+    }
     throw new ApiError(status.UNKNOWN_ERROR, error.message);
   }
 });
