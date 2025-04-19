@@ -1,7 +1,7 @@
 module.exports = {
   APP_VERSIONS: {
     android: {
-      currentVersion: '1.0.5',
+      currentVersion: '1.0.7',
       minimumVersion: '1.0.0',
       releaseNotes: '{"Bug Fixes & Improvements": ""}'
     },
