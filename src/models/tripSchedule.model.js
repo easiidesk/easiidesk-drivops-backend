@@ -107,8 +107,25 @@ const tripScheduleSchema = mongoose.Schema(
     cancelledAt: {
       type: Date,
       default: null
+    },
+    startOdometer: {
+      type: Number,
+      min: 0
+    },
+    endOdometer: {
+      type: Number,
+      min: 0
+    },
+    distanceTraveled: {
+      type: Number,
+      min: 0
+    },
+    actualStartTime: {
+      type: Date
+    },
+    actualEndTime: {
+      type: Date
     }
-    
   },
   {
     timestamps: true,

@@ -18,6 +18,9 @@ const dashboardRoutes = require('./routes/dashboard.route');
 const notificationRoutes = require('./routes/notification.route');
 const userNotificationRoutes = require('./routes/userNotification.route');
 const driverAttendanceRoutes = require('./routes/driverAttendance.route');
+const fuelingRecordRoutes = require('./routes/fuelingRecord.route');
+const maintenanceRecordRoutes = require('./routes/maintenanceRecord.route');
+const driverLocationRoutes = require('./routes/driverLocation.route');
 
 // Initialize Express application
 const app = initializeApp();
@@ -44,7 +47,10 @@ const routes = {
   'dashboard': dashboardRoutes,
   'notifications': notificationRoutes,
   'notification-settings': userNotificationRoutes,
-  'driver-attendance': driverAttendanceRoutes
+  'driver-attendance': driverAttendanceRoutes,
+  'fueling-records': fuelingRecordRoutes,
+  'maintenance-records': maintenanceRecordRoutes,
+  'driver-locations': driverLocationRoutes
 };
 
 // Apply routes to application

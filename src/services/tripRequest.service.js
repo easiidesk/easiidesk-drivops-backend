@@ -172,7 +172,7 @@ const createTripRequest = async (requestBody, userId) => {
   //notify all schedulers-admins-super-admins
   sendNotificationsToRoles(['scheduler', 'admin', 'super-admin'], ['receiveTripRequestedNotification'], 'New Trip Request', formatTripRequestNotification(tripRequestData), {
     tripRequestId: tripRequest._id.toString()
-  });
+  },[userId]);
   
 
   return tripRequestData;
@@ -237,6 +237,13 @@ const updateTripRequest = async (tripRequestId, updateBody, userId) => {
       ? `Status changed to ${updateBody.status}` 
       : 'Trip request updated'
   });
+
+  const tripRequestData = await getTripRequestById(tripRequestId);
+
+  //notify all schedulers-admins-super-admins
+  sendNotificationsToRoles(['scheduler', 'admin', 'super-admin'], ['receiveTripRequestUpdatedNotification'], 'Trip Request Updated', formatTripRequestNotification(tripRequestData), {
+    tripRequestId: tripRequestId
+  },[userId]);
   
   return formatTripRequest(updated);
 };
@@ -295,6 +302,14 @@ const deleteTripRequest = async (tripRequestId, userId) => {
     newState: updated.toObject(),
     remarks: 'Trip request deleted'
   });
+
+  const tripRequestData = await getTripRequestById(tripRequestId);
+
+  //notify all schedulers-admins-super-admins
+  sendNotificationsToRoles(['scheduler', 'admin', 'super-admin'], ['receiveTripRequestCancelledNotification'], 'Trip Request Cancelled', formatTripRequestNotification(tripRequestData), {
+    tripRequestId: tripRequestId
+  },[userId]);
+  
   
   return formatTripRequest(updated);
 };

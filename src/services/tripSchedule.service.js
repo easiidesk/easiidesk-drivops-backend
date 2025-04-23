@@ -3,6 +3,10 @@ const { TripSchedule, TripRequest, TripPurpose } = require('../models');
 const ApiError = require('../utils/ApiError');
 const { getPagination } = require('../utils/pagination');
 const mongoose = require('mongoose');
+const User = require('../models/user.model');
+const Vehicle = require('../models/vehicle.model');
+const DriverLocation = require('../models/driverLocation.model');
+const httpStatus = require('http-status');
 
 /**
  * Format trip schedule data according to required structure
@@ -508,6 +512,254 @@ const checkAvailability = async (vehicleId, driverId, startTime, endTime, exclud
   };
 };
 
+/**
+ * Get trips scheduled for a specific driver
+ * @param {string} driverId - Driver ID
+ * @param {Object} options - Query options like pagination, filtering
+ * @returns {Promise<Object>} Paginated trips for the driver
+ */
+const getDriverTrips = async (driverId, options = {}) => {
+  // Verify driver exists
+  const driver = await User.findOne({ 
+    _id: driverId,
+    role: 'driver',
+    isActive: true,
+    deletedAt: null
+  });
+  
+  if (!driver) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'Driver not found');
+  }
+  
+  // Build filter
+  const filter = { 
+    driverId, 
+    isActive: true,
+    deletedAt: null
+  };
+  
+  // Filter by status if provided
+  if (options.status) {
+    filter.status = options.status;
+  }
+  
+  // Filter by date range if provided
+  if (options.startDate || options.endDate) {
+    filter.tripStartTime = {};
+    
+    if (options.startDate) {
+      const startDate = new Date(options.startDate);
+      startDate.setHours(0, 0, 0, 0);
+      filter.tripStartTime.$gte = startDate;
+    }
+    
+    if (options.endDate) {
+      const endDate = new Date(options.endDate);
+      endDate.setHours(23, 59, 59, 999);
+      filter.tripStartTime.$lte = endDate;
+    }
+  }
+  
+  // Build pagination options
+  const paginationOptions = {
+    page: options.page ? parseInt(options.page, 10) : 1,
+    limit: options.limit ? parseInt(options.limit, 10) : 10,
+    sort: { tripStartTime: 1 }, // Sort by trip start time (upcoming first)
+    populate: [
+      { path: 'vehicleId', select: 'name licensePlate' },
+      { path: 'createdBy', select: 'name' },
+      { path: 'destinations.purposeId', select: 'name' }
+    ]
+  };
+  
+  // Get trips with pagination
+  const trips = await TripSchedule.paginate(filter, paginationOptions);
+  
+  return trips;
+};
+
+/**
+ * Get upcoming trips for a driver
+ * @param {string} driverId - Driver ID
+ * @param {Object} options - Query options
+ * @returns {Promise<Object>} Upcoming trips
+ */
+const getDriverUpcomingTrips = async (driverId, options = {}) => {
+  const currentDate = new Date();
+  
+  return getDriverTrips(driverId, {
+    ...options,
+    startDate: currentDate.toISOString(),
+    status: 'scheduled'
+  });
+};
+
+/**
+ * Update trip status to in-progress
+ * @param {string} tripId - Trip ID
+ * @param {string} driverId - Driver ID
+ * @param {Object} updateData - Data for starting the trip (odometer, etc)
+ * @returns {Promise<Object>} Updated trip
+ */
+const startTrip = async (tripId, driverId, updateData) => {
+  // Verify driver exists
+  const driver = await User.findOne({ 
+    _id: driverId,
+    role: 'driver',
+    isActive: true,
+    deletedAt: null
+  });
+  
+  if (!driver) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'Driver not found');
+  }
+  
+  // Find trip
+  const trip = await TripSchedule.findOne({
+    _id: tripId,
+    driverId,
+    status: 'scheduled',
+    isActive: true,
+    deletedAt: null
+  });
+  
+  if (!trip) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'Trip not found or cannot be started');
+  }
+  
+  // Check if driver already has another active trip
+  const activeTrip = await TripSchedule.findOne({
+    driverId,
+    status: 'in progress',
+    isActive: true,
+    deletedAt: null,
+    _id: { $ne: tripId }
+  });
+  
+  if (activeTrip) {
+    throw new ApiError(
+      httpStatus.BAD_REQUEST, 
+      'You already have an active trip. Please complete it before starting a new one.'
+    );
+  }
+  
+  // Update trip status
+  trip.status = 'in progress';
+  trip.startOdometer = updateData.odometer;
+  trip.actualStartTime = new Date();
+  
+  await trip.save();
+  
+  // Record driver location if coordinates provided
+  if (updateData.coordinates) {
+    try {
+      await DriverLocation.create({
+        driverId,
+        location: {
+          type: 'Point',
+          coordinates: updateData.coordinates
+        },
+        timestamp: new Date(),
+        tripId: trip._id,
+        source: 'trip'
+      });
+    } catch (error) {
+      // Log but don't fail if location recording fails
+      console.error('Failed to record trip start location:', error);
+    }
+  }
+  
+  return trip;
+};
+
+/**
+ * Complete a trip
+ * @param {string} tripId - Trip ID
+ * @param {string} driverId - Driver ID
+ * @param {Object} updateData - Data for completing the trip
+ * @returns {Promise<Object>} Updated trip
+ */
+const completeTrip = async (tripId, driverId, updateData) => {
+  // Verify driver exists
+  const driver = await User.findOne({ 
+    _id: driverId,
+    role: 'driver',
+    isActive: true,
+    deletedAt: null
+  });
+  
+  if (!driver) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'Driver not found');
+  }
+  
+  // Find trip
+  const trip = await TripSchedule.findOne({
+    _id: tripId,
+    driverId,
+    status: 'in progress',
+    isActive: true,
+    deletedAt: null
+  });
+  
+  if (!trip) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'Trip not found or cannot be completed');
+  }
+  
+  // Validate data
+  if (!updateData.odometer) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'End odometer reading is required');
+  }
+  
+  if (trip.startOdometer && updateData.odometer < trip.startOdometer) {
+    throw new ApiError(
+      httpStatus.BAD_REQUEST, 
+      'End odometer reading cannot be less than start odometer reading'
+    );
+  }
+  
+  // Calculate trip metrics
+  const distanceTraveled = trip.startOdometer ? updateData.odometer - trip.startOdometer : null;
+  
+  // Update trip status
+  trip.status = 'completed';
+  trip.endOdometer = updateData.odometer;
+  trip.actualEndTime = new Date();
+  trip.distanceTraveled = distanceTraveled;
+  trip.notes = updateData.notes || trip.notes;
+  
+  // Update vehicle odometer if it's higher than current
+  if (updateData.odometer) {
+    const vehicle = await Vehicle.findById(trip.vehicleId);
+    if (vehicle && (!vehicle.mileage || updateData.odometer > vehicle.mileage)) {
+      vehicle.mileage = updateData.odometer;
+      await vehicle.save();
+    }
+  }
+  
+  await trip.save();
+  
+  // Record driver location if coordinates provided
+  if (updateData.coordinates) {
+    try {
+      await DriverLocation.create({
+        driverId,
+        location: {
+          type: 'Point',
+          coordinates: updateData.coordinates
+        },
+        timestamp: new Date(),
+        tripId: trip._id,
+        source: 'trip'
+      });
+    } catch (error) {
+      // Log but don't fail if location recording fails
+      console.error('Failed to record trip end location:', error);
+    }
+  }
+  
+  return trip;
+};
+
 module.exports = {
   getSchedules,
   getScheduleById,
@@ -517,5 +769,9 @@ module.exports = {
   cancelSchedule,
   getSchedulesByDriver,
   getSchedulesByVehicle,
-  checkAvailability
+  checkAvailability,
+  getDriverTrips,
+  getDriverUpcomingTrips,
+  startTrip,
+  completeTrip
 }; 

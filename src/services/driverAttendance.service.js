@@ -77,9 +77,10 @@ class DriverAttendanceService {
   /**
    * Punch in a driver
    * @param {string} driverId - Driver ID
-   * @returns {Object} Updated attendance record
+   * @param {Object} punchData - Additional punch data like location
+   * @returns {Promise<Object>} Updated attendance record
    */
-  async punchIn(driverId) {
+  async punchIn(driverId, punchData = {}) {
     // Verify driver exists
     const driver = await User.findOne({
       _id: driverId,
@@ -110,11 +111,19 @@ class DriverAttendanceService {
       }
     }
 
-    // Add new punch-in
+    // Add new punch-in with location if provided
     const newPunch = {
       inTime: new Date(),
       outTime: null
     };
+
+    // Add location if provided
+    if (punchData.coordinates && Array.isArray(punchData.coordinates) && punchData.coordinates.length === 2) {
+      newPunch.inLocation = {
+        type: 'Point',
+        coordinates: punchData.coordinates
+      };
+    }
 
     if (attendance) {
       // Update existing attendance record
@@ -136,8 +145,23 @@ class DriverAttendanceService {
       await attendance.save();
     }
 
+    // Record location in the driver location tracking system if coordinates provided
+    if (punchData.coordinates) {
+      try {
+        const DriverLocation = require('./driverLocation.service');
+        await DriverLocation.recordLocation({
+          driverId,
+          coordinates: punchData.coordinates,
+          source: 'attendance'
+        });
+      } catch (error) {
+        // Log but don't fail the punch in if location recording fails
+        console.error('Failed to record attendance location:', error);
+      }
+    }
+
     // Notify all schedulers-admins-super-admins
-    sendNotificationsToRoles(['scheduler', 'admin', 'super-admin'], ['receiveDriverPunchIn'], `Driver Punch IN`, formatDriverPunchInNotification(driver.name), {
+    sendNotificationsToRoles(['admin', 'super-admin'], ['receiveDriverPunchIn'], `Driver Punch IN`, formatDriverPunchInNotification(driver.name), {
       driverId: driverId.toString(),
       type: 'driver_punch_in',
       time: new Date().toISOString()
@@ -151,9 +175,10 @@ class DriverAttendanceService {
   /**
    * Punch out a driver
    * @param {string} driverId - Driver ID
-   * @returns {Object} Updated attendance record
+   * @param {Object} punchData - Additional punch data like location
+   * @returns {Promise<Object>} Updated attendance record
    */
-  async punchOut(driverId) {
+  async punchOut(driverId, punchData = {}) {
     // Verify driver exists
     const driver = await User.findOne({
       _id: driverId,
@@ -193,9 +218,17 @@ class DriverAttendanceService {
     const outTime = new Date();
     const duration = (outTime - lastPunch.inTime) / (1000 * 60 * 60); // hours
 
-    // Update the last punch with out time and duration
+    // Update the last punch with out time, duration, and location if provided
     attendance.punches[lastPunchIndex].outTime = outTime;
     attendance.punches[lastPunchIndex].duration = duration;
+
+    // Add location if provided
+    if (punchData.coordinates && Array.isArray(punchData.coordinates) && punchData.coordinates.length === 2) {
+      attendance.punches[lastPunchIndex].outLocation = {
+        type: 'Point',
+        coordinates: punchData.coordinates
+      };
+    }
 
     // Calculate total hours for the day
     const totalHours = attendance.punches.reduce((total, punch) => {
@@ -208,8 +241,23 @@ class DriverAttendanceService {
     attendance.updatedAt = new Date();
     await attendance.save();
 
+    // Record location in the driver location tracking system if coordinates provided
+    if (punchData.coordinates) {
+      try {
+        const DriverLocation = require('./driverLocation.service');
+        await DriverLocation.recordLocation({
+          driverId,
+          coordinates: punchData.coordinates,
+          source: 'attendance'
+        });
+      } catch (error) {
+        // Log but don't fail the punch out if location recording fails
+        console.error('Failed to record attendance location:', error);
+      }
+    }
+
     // Notify all schedulers-admins-super-admins
-    sendNotificationsToRoles(['scheduler', 'admin', 'super-admin'], ['receiveDriverPunchOut'], `Driver Punch OUT`, await formatDriverPunchOutNotification(attendance, driverId, driver.name), {
+    sendNotificationsToRoles(['admin', 'super-admin'], ['receiveDriverPunchOut'], `Driver Punch OUT`, await formatDriverPunchOutNotification(attendance, driverId, driver.name), {
       type: 'driver_punch_out',
       driverId: driverId.toString(),
       driverName: driver.name

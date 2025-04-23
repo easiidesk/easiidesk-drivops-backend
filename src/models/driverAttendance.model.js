@@ -5,6 +5,28 @@
 const mongoose = require('mongoose');
 
 /**
+ * Location Schema
+ * For storing location data
+ */
+const locationSchema = new mongoose.Schema({
+  type: {
+    type: String,
+    enum: ['Point'],
+    default: 'Point'
+  },
+  coordinates: {
+    type: [Number], // [longitude, latitude]
+    required: true,
+    validate: {
+      validator: function(v) {
+        return Array.isArray(v) && v.length === 2;
+      },
+      message: 'Coordinates must be an array of [longitude, latitude]'
+    }
+  }
+}, { _id: false });
+
+/**
  * Punch Schema
  * Represents a single punch in/out event
  */
@@ -19,6 +41,14 @@ const punchSchema = new mongoose.Schema({
   },
   duration: {
     type: Number,
+    default: null
+  },
+  inLocation: {
+    type: locationSchema,
+    default: null
+  },
+  outLocation: {
+    type: locationSchema,
     default: null
   }
 }, { _id: false });

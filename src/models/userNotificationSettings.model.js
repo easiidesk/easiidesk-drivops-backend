@@ -14,7 +14,9 @@ const adminNotificationSchema = {
   receiveTripRequestedNotification: true,
   receiveTripRequestUpdatedNotification: true,
   receiveTripRequestCancelledNotification: true,
-  
+  receiveFuelingRecordCreatedNotification: true,
+  receiveFuelingRecordUpdatedNotification: true,
+  receiveFuelingRecordDeletedNotification: true
 };
 
 const requestorNotificationSchema = {

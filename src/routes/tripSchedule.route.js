@@ -294,4 +294,26 @@ router.post(
   tripScheduleController.checkAvailability
 );
 
+// Add the following routes for driver trips
+
+// Get all trips for the authenticated driver
+router
+  .route('/driver/me')
+  .get(authorize(['driver']), tripScheduleController.getDriverMyTrips);
+
+// Get upcoming trips for the authenticated driver
+router
+  .route('/driver/me/upcoming')
+  .get(authorize(['driver']), tripScheduleController.getDriverMyUpcomingTrips);
+
+// Start a trip
+router
+  .route('/:tripId/start')
+  .patch(authorize(['driver']), tripScheduleController.startTrip);
+
+// Complete a trip
+router
+  .route('/:tripId/complete')
+  .patch(authorize(['driver']), tripScheduleController.completeTrip);
+
 module.exports = router; 

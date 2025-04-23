@@ -3,9 +3,9 @@ const NotificationService = require('../common/services/notification.service');
 const { UserNotificationSettings } = require('../models');
 const {DriverAttendance} = require('../models');
 const { convertUTCToDubaiTime } = require('../common/helpers/time_helper');
-const sendNotificationsToRoles = async (roles, notificationTypeList, title, message, data) => {
+const sendNotificationsToRoles = async (roles, notificationTypeList, title, message, data, exceptUserIds = []) => {
   let tokensToSendNotification = [];
-  const users = await User.find({ role: { $in: roles } });
+  const users = await User.find({ role: { $in: roles }, });
   const userMap = {};
   users.forEach(user => {
     userMap[user._id] = user;

@@ -178,7 +178,7 @@ class DriverAttendanceService {
     if (notificationUsersTokens.length > 0) {
       await notificationService.sendNotification(
         notificationUsersTokens, 
-        'Driver Punch In',
+        `Driver Punch In (${driver.name})`,
         `• ${driver.name} has punched in`,
         {
           type: 'driver_punch_in',
@@ -326,7 +326,7 @@ class DriverAttendanceService {
 
       await notificationService.sendNotification(
         notificationUsersWithTokens, 
-        'Driver Punch Out',
+        `Driver Punch Out (${driver.name})`,
         `• ${driver.name} has punched out.\n• Total time: ${timeString}`,
         {
           type: 'driver_punch_out',

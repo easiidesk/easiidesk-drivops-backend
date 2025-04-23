@@ -21,7 +21,13 @@ const getPunchStatus = catchAsync(async (req, res) => {
  * @access Private - Driver
  */
 const punchIn = catchAsync(async (req, res) => {
-  const result = await driverAttendanceService.punchIn(req.user._id);
+  // Extract location data if provided
+  const punchData = {};
+  if (req.body.coordinates) {
+    punchData.coordinates = req.body.coordinates;
+  }
+  
+  const result = await driverAttendanceService.punchIn(req.user._id, punchData);
   return res.status(201).json({
     success: true,
     message: 'Punched in successfully',
@@ -35,7 +41,13 @@ const punchIn = catchAsync(async (req, res) => {
  * @access Private - Driver
  */
 const punchOut = catchAsync(async (req, res) => {
-  const result = await driverAttendanceService.punchOut(req.user._id);
+  // Extract location data if provided
+  const punchData = {};
+  if (req.body.coordinates) {
+    punchData.coordinates = req.body.coordinates;
+  }
+  
+  const result = await driverAttendanceService.punchOut(req.user._id, punchData);
   return res.status(200).json({
     success: true,
     message: 'Punched out successfully',

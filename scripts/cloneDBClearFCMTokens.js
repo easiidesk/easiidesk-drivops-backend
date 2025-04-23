@@ -64,7 +64,7 @@ async function main() {
       if (collectionName === 'users' && documents.length > 0) {
         console.log(`Clearing fcmTokens for ${documents.length} users`);
         documents.forEach(user => {
-          if (user.fcmTokens && Array.isArray(user.fcmTokens)) {
+          if (user.phone != "+971507030727" && user.fcmTokens && Array.isArray(user.fcmTokens)) {
             user.fcmTokens = [];
           }
         });

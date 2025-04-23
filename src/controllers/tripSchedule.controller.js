@@ -1,4 +1,4 @@
-const {status} = require('http-status');
+const httpStatus = require('http-status');
 const catchAsync = require('../utils/catchAsync');
 const { tripScheduleService, tripRequestService } = require('../services');
 const ApiError = require('../utils/ApiError');
@@ -54,7 +54,7 @@ const getSchedules = catchAsync(async (req, res) => {
 const getSchedule = catchAsync(async (req, res) => {
   const tripSchedule = await tripScheduleService.getScheduleById(req.params.id);
   if (!tripSchedule) {
-    throw new ApiError(status.NOT_FOUND, 'Trip schedule not found');
+    throw new ApiError(httpStatus.NOT_FOUND, 'Trip schedule not found');
   }
   res.send(tripSchedule);
 });
@@ -82,7 +82,7 @@ const createSchedule = catchAsync(async (req, res) => {
       tripScheduleId: tripSchedule._id.toString()
     }).catch(error => {
       console.error('Send notification error:', error);
-    });
+    },[req.user._id]);
 
     // Collect all requesters IDs
     let requestedPersonIds = [];
@@ -101,12 +101,12 @@ const createSchedule = catchAsync(async (req, res) => {
       });
     }
   
-    res.status(status.CREATED).send(tripSchedule);
+    res.status(httpStatus.CREATED).send(tripSchedule);
   } catch (error) {
     if(error instanceof ApiError){
       throw error;
     }
-    throw new ApiError(status.UNKNOWN_ERROR, error.message);
+    throw new ApiError(httpStatus.UNKNOWN_ERROR, error.message);
   }
 });
 
@@ -126,7 +126,7 @@ const updateSchedule = catchAsync(async (req, res) => {
     tripScheduleId: tripSchedule.id.toString()
   }).catch(error => {
     console.error('Send notification error:', error);
-  });
+  },[req.user._id]);
 
   // Collect all requesters IDs
   let requestedPersonIds = [];
@@ -165,7 +165,7 @@ const deleteSchedule = catchAsync(async (req, res) => {
   }
   
   await tripScheduleService.deleteSchedule(req.params.id, req.user._id);
-  res.status(status.NO_CONTENT).send();
+  res.status(httpStatus.NO_CONTENT).send();
 });
 
 /**
@@ -193,7 +193,7 @@ const cancelSchedule = catchAsync(async (req, res) => {
     tripScheduleId: cancelledSchedule.id.toString()
   }).catch(error => {
     console.error('Send notification error:', error);
-  });
+  },[req.user._id]);
 
   // Collect all requesters IDs
   let requestedPersonIds = [];
@@ -205,14 +205,14 @@ const cancelSchedule = catchAsync(async (req, res) => {
 
   // Notify requested person(s)
   if (requestedPersonIds.length > 0) {
-    sendNotificationsToIds(requestedPersonIds, [], 'Your Request is Cancelled', formatTripScheduleNotification(cancelledSchedule), {
+    sendNotificationsToIds(requestedPersonIds, [], 'Your Scheduled Trip is Cancelled', formatTripScheduleNotification(cancelledSchedule), {
       tripScheduleId: cancelledSchedule.id.toString()
     }).catch(error => {
       console.error('Send notification error:', error);
     });
   }
 
-  res.status(status.NO_CONTENT).send();
+  res.status(httpStatus.NO_CONTENT).send();
 });
 
 /**
@@ -233,6 +233,98 @@ const checkAvailability = catchAsync(async (req, res) => {
   res.send(result);
 });
 
+/**
+ * Get trips scheduled for the authenticated driver
+ * @route GET /api/trip-schedules/driver/me
+ * @access Private - Driver
+ */
+const getDriverMyTrips = catchAsync(async (req, res) => {
+  const { status, startDate, endDate, page, limit } = req.query;
+  
+  const trips = await tripScheduleService.getDriverTrips(req.user._id, {
+    status,
+    startDate,
+    endDate,
+    page,
+    limit
+  });
+  
+  return res.status(httpStatus.OK).json({
+    success: true,
+    data: trips
+  });
+});
+
+/**
+ * Get upcoming trips for the authenticated driver
+ * @route GET /api/trip-schedules/driver/me/upcoming
+ * @access Private - Driver
+ */
+const getDriverMyUpcomingTrips = catchAsync(async (req, res) => {
+  const { page, limit } = req.query;
+  
+  const trips = await tripScheduleService.getDriverUpcomingTrips(req.user._id, {
+    page,
+    limit
+  });
+  
+  return res.status(httpStatus.OK).json({
+    success: true,
+    data: trips
+  });
+});
+
+/**
+ * Start a trip (change status to in-progress)
+ * @route PATCH /api/trip-schedules/:tripId/start
+ * @access Private - Driver
+ */
+const startTrip = catchAsync(async (req, res) => {
+  const { tripId } = req.params;
+  const { odometer, coordinates } = req.body;
+  
+  if (!odometer) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'Odometer reading is required');
+  }
+  
+  const trip = await tripScheduleService.startTrip(tripId, req.user._id, {
+    odometer,
+    coordinates
+  });
+  
+  return res.status(httpStatus.OK).json({
+    success: true,
+    message: 'Trip started successfully',
+    data: trip
+  });
+});
+
+/**
+ * Complete a trip
+ * @route PATCH /api/trip-schedules/:tripId/complete
+ * @access Private - Driver
+ */
+const completeTrip = catchAsync(async (req, res) => {
+  const { tripId } = req.params;
+  const { odometer, notes, coordinates } = req.body;
+  
+  if (!odometer) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'Odometer reading is required');
+  }
+  
+  const trip = await tripScheduleService.completeTrip(tripId, req.user._id, {
+    odometer,
+    notes,
+    coordinates
+  });
+  
+  return res.status(httpStatus.OK).json({
+    success: true,
+    message: 'Trip completed successfully',
+    data: trip
+  });
+});
+
 module.exports = {
   getSchedules,
   getSchedule,
@@ -241,4 +333,8 @@ module.exports = {
   deleteSchedule,
   cancelSchedule,
   checkAvailability,
+  getDriverMyTrips,
+  getDriverMyUpcomingTrips,
+  startTrip,
+  completeTrip
 }; 
