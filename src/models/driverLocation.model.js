@@ -16,7 +16,7 @@ const driverLocationSchema = mongoose.Schema(
       ref: 'User',
       required: true
     },
-    location: {
+    geometry: {
       type: {
         type: String,
         enum: ['Point'],
@@ -26,6 +26,9 @@ const driverLocationSchema = mongoose.Schema(
         type: [Number], // [longitude, latitude]
         required: true
       }
+    },
+    location: {
+      type: String
     },
     timestamp: {
       type: Date,
@@ -56,7 +59,7 @@ const driverLocationSchema = mongoose.Schema(
 // Add indexes for common queries
 driverLocationSchema.index({ driverId: 1, timestamp: -1 });
 driverLocationSchema.index({ timestamp: -1 });
-driverLocationSchema.index({ location: '2dsphere' });
+driverLocationSchema.index({ geometry: '2dsphere' });
 
 // Add plugins
 driverLocationSchema.plugin(toJSON);

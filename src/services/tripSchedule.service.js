@@ -7,13 +7,16 @@ const User = require('../models/user.model');
 const Vehicle = require('../models/vehicle.model');
 const DriverLocation = require('../models/driverLocation.model');
 const httpStatus = require('http-status');
+const { sendNotificationsToRoles } = require('../utils/notifcationHelper');
+const { createTripStartedNotification, createTripEndedNotification } = require('../notificationTemplates/trips');
+const driverAttendanceService = require('../services/driverAttendance.service');
 
 /**
  * Format trip schedule data according to required structure
  * @param {Object} schedule - Trip schedule document
  * @returns {Object} Formatted trip schedule
  */
-const formatTripSchedule = (schedule) => {
+const formatTripSchedule = (schedule, needActualTrip = false) => {
   const formatted = {
     id: schedule._id,
     status: schedule.status,
@@ -87,7 +90,14 @@ const formatTripSchedule = (schedule) => {
     tripStartTime: schedule.destinations[0]?.tripStartTime,
     tripApproxReturnTime: schedule.destinations[schedule.destinations.length - 1]?.tripApproxArrivalTime,
     createdAt: schedule.createdAt,
-    updatedAt: schedule.updatedAt
+    updatedAt: schedule.updatedAt,
+    actualTrip: needActualTrip ? {
+      startOdometer: schedule.startOdometer,
+      endOdometer: schedule.endOdometer,
+      distanceTraveled: schedule.distanceTraveled,
+      actualStartTime: schedule.actualStartTime,
+      actualEndTime: schedule.actualEndTime
+    } : null
   };
 
   return formatted;
@@ -99,7 +109,7 @@ const formatTripSchedule = (schedule) => {
  * @param {Object} options - Query options
  * @returns {Promise<QueryResult>}
  */
-const getSchedules = async (filter = {}, options = {}) => {
+const getSchedules = async (filter = {}, options = {}, requestingUserRole) => {
   const pagination = getPagination(options);
   
   // Default to active and non-deleted schedules
@@ -133,7 +143,7 @@ const getSchedules = async (filter = {}, options = {}) => {
 
   const total = await TripSchedule.countDocuments(mergedFilter);
   
-  const formattedResults = schedules.map(formatTripSchedule);
+  const formattedResults = schedules.map(schedule => formatTripSchedule(schedule, requestingUserRole.includes('admin') || requestingUserRole.includes('super-admin')));
 
   return {
     filters: { status: 'scheduled' },
@@ -531,6 +541,9 @@ const getDriverTrips = async (driverId, options = {}) => {
     throw new ApiError(httpStatus.NOT_FOUND, 'Driver not found');
   }
   
+  // Get pagination options
+  const pagination = getPagination(options);
+  
   // Build filter
   const filter = { 
     driverId, 
@@ -540,7 +553,7 @@ const getDriverTrips = async (driverId, options = {}) => {
   
   // Filter by status if provided
   if (options.status) {
-    filter.status = options.status;
+    filter.status = {$in: options.status.split(',')};
   }
   
   // Filter by date range if provided
@@ -560,22 +573,47 @@ const getDriverTrips = async (driverId, options = {}) => {
     }
   }
   
-  // Build pagination options
-  const paginationOptions = {
-    page: options.page ? parseInt(options.page, 10) : 1,
-    limit: options.limit ? parseInt(options.limit, 10) : 10,
-    sort: { tripStartTime: 1 }, // Sort by trip start time (upcoming first)
-    populate: [
-      { path: 'vehicleId', select: 'name licensePlate' },
-      { path: 'createdBy', select: 'name' },
-      { path: 'destinations.purposeId', select: 'name' }
-    ]
+  // Get trips with proper joins
+  const schedules = await TripSchedule.find(filter)
+    .populate('driverId', 'name email phone')
+    .populate('vehicleId', 'name')
+    .populate('createdBy', 'name email phone')
+    .populate('destinations.purposeId', 'name jobCardNeeded')
+    .populate('destinations.destinationAddedBy', 'name email phone')
+    .populate({
+      path: 'destinations.requestId',
+      select: 'destinations jobCardId noOfPeople createdBy',
+      populate: [
+        {
+          path: 'destinations.purpose',
+          select: 'name jobCardNeeded',
+          model: 'TripPurpose'
+        },
+        {
+          path: 'createdBy',
+          select: 'name phone'
+        }
+      ]
+    })
+    .sort(options.sortBy ? options.sortBy : { tripStartTime: 1 })
+    .skip(pagination.skip)
+    .limit(pagination.limit);
+
+  const total = await TripSchedule.countDocuments(filter);
+  
+  // Format results using the same formatter as getSchedules
+  const formattedResults = schedules.map(formatTripSchedule, true);
+  
+  return {
+    filters: { status: options.status || 'all' },
+    data: formattedResults,
+    pagination: {
+      page: pagination.page,
+      limit: pagination.limit,
+      totalResults: total,
+      totalPages: pagination.pagination==false?1:Math.ceil(total / pagination.limit)
+    }
   };
-  
-  // Get trips with pagination
-  const trips = await TripSchedule.paginate(filter, paginationOptions);
-  
-  return trips;
 };
 
 /**
@@ -614,6 +652,16 @@ const startTrip = async (tripId, driverId, updateData) => {
     throw new ApiError(httpStatus.NOT_FOUND, 'Driver not found');
   }
   
+  // Check if driver is punched in
+  const punchStatus = await driverAttendanceService.getDriverPunchStatus(driverId);
+  
+  if (!punchStatus.isPunchedIn) {
+    throw new ApiError(
+      httpStatus.BAD_REQUEST, 
+      'You must be punched in before starting a trip.'
+    );
+  }
+  
   // Find trip
   const trip = await TripSchedule.findOne({
     _id: tripId,
@@ -650,6 +698,13 @@ const startTrip = async (tripId, driverId, updateData) => {
   
   await trip.save();
   
+  // Update vehicle odometer if provided
+  if (updateData.odometer && trip.vehicleId) {
+    const vehicle = await Vehicle.findById(trip.vehicleId);
+      vehicle.odometer = updateData.odometer;
+      await vehicle.save();
+  }
+  
   // Record driver location if coordinates provided
   if (updateData.coordinates) {
     try {
@@ -668,7 +723,16 @@ const startTrip = async (tripId, driverId, updateData) => {
       console.error('Failed to record trip start location:', error);
     }
   }
-  
+  // Get trip data and send notifications asynchronously
+  getScheduleById(tripId).then(tripData => {
+    sendNotificationsToRoles(['admin', 'super-admin'], ['receiveDriverTripStarted'], `Trip Started: ${tripData.driver.name}`, createTripStartedNotification(tripData), {
+      tripScheduleId: tripId.toString()
+    }).catch(error => {
+      console.error('Send notification error:', error);
+    },[]);
+  }).catch(error => {
+    console.error('Error getting trip data:', error); 
+  });
   return trip;
 };
 
@@ -728,12 +792,11 @@ const completeTrip = async (tripId, driverId, updateData) => {
   trip.notes = updateData.notes || trip.notes;
   
   // Update vehicle odometer if it's higher than current
-  if (updateData.odometer) {
+  if (updateData.odometer && trip.vehicleId) {
     const vehicle = await Vehicle.findById(trip.vehicleId);
-    if (vehicle && (!vehicle.mileage || updateData.odometer > vehicle.mileage)) {
-      vehicle.mileage = updateData.odometer;
+      vehicle.odometer = updateData.odometer;
       await vehicle.save();
-    }
+    
   }
   
   await trip.save();
@@ -756,6 +819,17 @@ const completeTrip = async (tripId, driverId, updateData) => {
       console.error('Failed to record trip end location:', error);
     }
   }
+
+   // Get trip data and send notifications asynchronously
+   getScheduleById(tripId).then(tripData => {
+    sendNotificationsToRoles(['admin', 'super-admin'], ['receiveDriverTripEnded'], `Trip Ended: ${tripData.driver.name}`, createTripEndedNotification(tripData), {
+      tripScheduleId: tripId.toString()
+    }).catch(error => {
+      console.error('Send notification error:', error);
+    },[]);
+  }).catch(error => {
+    console.error('Error getting trip data:', error); 
+  });
   
   return trip;
 };

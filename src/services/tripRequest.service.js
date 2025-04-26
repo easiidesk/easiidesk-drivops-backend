@@ -167,13 +167,16 @@ const createTripRequest = async (requestBody, userId) => {
     remarks: 'Trip request created'
   });
 
-  const tripRequestData = await getTripRequestById(tripRequest._id);
+  getTripRequestById(tripRequest._id).then(tripRequestData => {
 
   //notify all schedulers-admins-super-admins
   sendNotificationsToRoles(['scheduler', 'admin', 'super-admin'], ['receiveTripRequestedNotification'], 'New Trip Request', formatTripRequestNotification(tripRequestData), {
     tripRequestId: tripRequest._id.toString()
-  },[userId]);
-  
+  },[userId]).catch(error => {
+    console.error('Send notification error:', error);
+  })}).catch(error => {
+    console.error('Error getting trip request data:', error);
+  });
 
   return tripRequestData;
 };
@@ -238,12 +241,16 @@ const updateTripRequest = async (tripRequestId, updateBody, userId) => {
       : 'Trip request updated'
   });
 
-  const tripRequestData = await getTripRequestById(tripRequestId);
+  getTripRequestById(tripRequestId).then(tripRequestData => {
 
   //notify all schedulers-admins-super-admins
   sendNotificationsToRoles(['scheduler', 'admin', 'super-admin'], ['receiveTripRequestUpdatedNotification'], 'Trip Request Updated', formatTripRequestNotification(tripRequestData), {
     tripRequestId: tripRequestId
-  },[userId]);
+  },[userId]).catch(error => {
+    console.error('Send notification error:', error);
+  })}).catch(error => {
+    console.error('Error getting trip request data:', error);
+  });
   
   return formatTripRequest(updated);
 };
@@ -303,12 +310,16 @@ const deleteTripRequest = async (tripRequestId, userId) => {
     remarks: 'Trip request deleted'
   });
 
-  const tripRequestData = await getTripRequestById(tripRequestId);
+  getTripRequestById(tripRequestId).then(tripRequestData => {
 
   //notify all schedulers-admins-super-admins
   sendNotificationsToRoles(['scheduler', 'admin', 'super-admin'], ['receiveTripRequestCancelledNotification'], 'Trip Request Cancelled', formatTripRequestNotification(tripRequestData), {
     tripRequestId: tripRequestId
-  },[userId]);
+  },[userId]).catch(error => {
+    console.error('Send notification error:', error);
+  })}).catch(error => {
+    console.error('Error getting trip request data:', error);
+  });
   
   
   return formatTripRequest(updated);

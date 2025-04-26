@@ -14,14 +14,14 @@ router.use(verifyToken);
 // Record driver location - drivers can record their own, admins can record for any
 router.post(
   '/',
-  authorize(['driver', 'admin', 'super-admin']),
+  authorize(['driver']),
   driverLocationController.recordLocation
 );
 
 // Get latest location for all drivers - admin only
 router.get(
   '/latest',
-  authorize(['admin', 'super-admin', 'scheduler']),
+  authorize(['admin', 'super-admin']),
   driverLocationController.getAllDriversLatestLocation
 );
 

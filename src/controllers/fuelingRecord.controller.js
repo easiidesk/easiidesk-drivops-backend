@@ -206,6 +206,61 @@ const deleteFuelingRecord = catchAsync(async (req, res) => {
   });
 });
 
+/**
+ * Get fueling history for a driver
+ * @route GET /api/fueling-records/driver-history
+ * @access Private - Driver or Admin/Super Admin
+ */
+const getDriverFuelingHistory = catchAsync(async (req, res) => {
+  const { vehicleId, startDate, endDate, page = 1, limit = 10 } = req.query;
+  
+  // Determine which driver ID to use
+  // For drivers, use their own ID
+  // For admins, they can query any driver by specifying driverId in query
+  const driverId = req.user.role === 'driver' 
+    ? req.user._id 
+    : req.query.driverId || req.user._id;
+  
+  // Build filter based on query params
+  const filter = {};
+  
+  // Filter by vehicle if specified
+  if (vehicleId) {
+    filter.vehicleId = vehicleId;
+  }
+  
+  // Date range filter
+  if (startDate || endDate) {
+    filter.fueledAt = {};
+    if (startDate) {
+      const start = new Date(startDate);
+      start.setHours(0, 0, 0, 0);
+      filter.fueledAt.$gte = start;
+    }
+    if (endDate) {
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999);
+      filter.fueledAt.$lte = end;
+    }
+  }
+  
+  // Get fueling history with pagination
+  const fuelingHistory = await fuelingRecordService.getDriverFuelingHistory(
+    driverId,
+    filter,
+    {
+      page: parseInt(page),
+      limit: parseInt(limit),
+      sortBy: 'fueledAt:desc'
+    }
+  );
+  
+  return res.json({
+    success: true,
+    data: fuelingHistory
+  });
+});
+
 module.exports = {
   createFuelingRecord,
   getAllFuelingRecords,
@@ -213,5 +268,6 @@ module.exports = {
   getMyFuelingRecords,
   getFuelingRecordById,
   updateFuelingRecord,
-  deleteFuelingRecord
+  deleteFuelingRecord,
+  getDriverFuelingHistory
 }; 

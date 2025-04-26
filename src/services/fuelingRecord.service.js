@@ -24,15 +24,26 @@ const createFuelingRecord = async (recordData, userId) => {
     ...recordData,
     date: recordData.date || new Date()
   });
-  
-  // Update vehicle's odometer if the new reading is higher
-  if (recordData.odometer > vehicle.mileage) {
+
+  let vehicleData = {
+    lastFuelingOdometer: recordData.odometer,
+    lastFuelingAmount: recordData.amount,
+    lastFuelingDate: recordData.date || new Date(),
+    updatedAt: new Date()
+  };
+
+  // Calculate mileage if we have previous fueling data
+  if ((vehicle.lastFuelingOdometer||0) && (vehicle.lastFuelingAmount) && recordData.odometer > (vehicle.lastFuelingOdometer||0)) {
+    const mileage = (recordData.odometer - vehicle.lastFuelingOdometer) / vehicle.lastFuelingAmount;
+
+    vehicleData.mileage = mileage;
+    
+  } 
+    // If first fueling or missing data, just update fueling stats
     await Vehicle.updateOne(
       { _id: recordData.vehicleId },
-      { mileage: recordData.odometer, updatedAt: new Date() }
+      vehicleData
     );
-  }
-
 
   const fuelingRecordData = await getFuelingRecordById(fuelingRecord._id);
   //notify all schedulers-admins-super-admins
@@ -136,7 +147,7 @@ const updateFuelingRecord = async (id, updateData, user) => {
   
   // Only allow the user who created the record to update it, unless admin
   const isAdmin = ['admin', 'super-admin'].includes(user.role);
-  const isCreator = record.createdBy.toString() === user.id;
+  const isCreator = record.createdBy?.toString() === user.id;
   
   if (!isAdmin && !isCreator) {
     throw new ApiError(status.FORBIDDEN, 'You are not authorized to update this record');
@@ -147,10 +158,13 @@ const updateFuelingRecord = async (id, updateData, user) => {
     const vehicle = await Vehicle.findOne({ _id: record.vehicleId });
     
     // Update vehicle's odometer if the new reading is higher
-    if (updateData.odometer > vehicle.mileage) {
+    if (updateData.odometer > (vehicle.mileage || 0)) {
       await Vehicle.updateOne(
         { _id: record.vehicleId },
-        { mileage: updateData.odometer, updatedAt: new Date() }
+        { 
+          mileage: updateData.odometer,
+          updatedAt: new Date() 
+        }
       );
     }
   }
@@ -196,6 +210,54 @@ const deleteFuelingRecord = async (id, userId) => {
   return record;
 };
 
+/**
+ * Get fueling history for a driver with filtering options
+ * @param {string} driverId - Driver ID
+ * @param {Object} filter - Filter criteria (vehicleId, dateRange)
+ * @param {Object} options - Query options (pagination, sorting)
+ * @returns {Promise<Object>} Paginated fueling records
+ */
+const getDriverFuelingHistory = async (driverId, filter = {}, options = {}) => {
+  // Verify driver exists
+  const driver = await User.findOne({ 
+    _id: driverId,
+    role: 'driver',
+    isActive: true,
+    deletedAt: null
+  });
+  
+  if (!driver) {
+    throw new ApiError(status.NOT_FOUND, 'Driver not found');
+  }
+  
+  // Build filter - always include the driver ID and active status
+  const queryFilter = { 
+    fueledBy: driverId,
+    isActive: true,
+    ...filter 
+  };
+  
+  // Get paginated results with populated fields
+  const fuelingRecords = await FuelingRecord.paginate(queryFilter, {
+    sortBy: options.sortBy || 'fueledAt:desc',
+    limit: parseInt(options.limit || 10, 10),
+    page: parseInt(options.page || 1, 10),
+    populate: [
+      { path: 'vehicleId', select: 'name licensePlate' }
+    ]
+  });
+  
+  return {
+    data: fuelingRecords.results,
+    pagination: {
+      page: fuelingRecords.page,
+      limit: fuelingRecords.limit,
+      totalResults: fuelingRecords.totalResults,
+      totalPages: fuelingRecords.totalPages
+    }
+  };
+};
+
 module.exports = {
   createFuelingRecord,
   getAllFuelingRecords,
@@ -203,5 +265,6 @@ module.exports = {
   getUserFuelingRecords,
   getFuelingRecordById,
   updateFuelingRecord,
-  deleteFuelingRecord
+  deleteFuelingRecord,
+  getDriverFuelingHistory
 }; 

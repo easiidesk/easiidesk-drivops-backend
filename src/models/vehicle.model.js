@@ -35,6 +35,19 @@ const vehicleSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
+  odometer: {
+    type: Number,
+    default: 0
+  },
+  lastFuelingDate: {
+    type: Date
+  },
+  lastFuelingOdometer: {
+    type: Number
+  },
+  lastFuelingAmount: {
+    type: Number
+  },
   registrationExpiry: {
     type: Date
   },

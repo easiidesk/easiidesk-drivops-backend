@@ -5,7 +5,10 @@ const {DriverAttendance} = require('../models');
 const { convertUTCToDubaiTime } = require('../common/helpers/time_helper');
 const sendNotificationsToRoles = async (roles, notificationTypeList, title, message, data, exceptUserIds = []) => {
   let tokensToSendNotification = [];
-  const users = await User.find({ role: { $in: roles }, });
+  const users = await User.find({ 
+    role: { $in: roles },
+    _id: { $nin: exceptUserIds }
+  });
   const userMap = {};
   users.forEach(user => {
     userMap[user._id] = user;

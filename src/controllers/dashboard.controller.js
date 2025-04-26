@@ -6,7 +6,7 @@ const { dashboardService } = require('../services');
  * @route GET /dashboard/counts
  */
 const getDashboardCounts = catchAsync(async (req, res) => {
-  const counts = await dashboardService.getDashboardCounts();
+  const counts = await dashboardService.getDashboardCounts(req.user.role);
   res.send(counts);
 });
 

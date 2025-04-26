@@ -26,8 +26,25 @@ const getCurrentTime = () => {
 const convertUTCToDubaiTime = (date) => {
   return moment.utc(date).tz("Asia/Dubai").toDate();
 }
+const formatDuration = (minutes) => {
+  if (minutes < 60) {
+    return `${minutes}m`;
+  }
+
+  const days = Math.floor(minutes / (24 * 60));
+  const hours = Math.floor((minutes % (24 * 60)) / 60);
+  const remainingMinutes = minutes % 60;
+
+  if (days > 0) {
+    return `${days}d ${hours}h ${remainingMinutes}m`.trim();
+  }
+
+  return `${hours}h ${remainingMinutes}m`.trim();
+};
+
 
 module.exports = {
   getCurrentTime,
-  convertUTCToDubaiTime
+  convertUTCToDubaiTime,
+  formatDuration
 }

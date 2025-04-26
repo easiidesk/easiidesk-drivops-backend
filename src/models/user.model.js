@@ -39,6 +39,22 @@ const userSchema = new mongoose.Schema({
     type: Date,
     default: null
   },
+  lastLocation: {
+    type: {
+      type: String,
+      enum: ['Point'],
+      default: 'Point'
+    },
+    coordinates: {
+      type: [Number],
+    },
+    location: {
+      type: String,
+    },
+    timestamp: {
+      type: Date
+    }
+  },
   isActive: {
     type: Boolean,
     default: true

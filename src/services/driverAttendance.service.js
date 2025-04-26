@@ -7,6 +7,8 @@ const User = require('../models/user.model');
 const DriverAttendance = require('../models/driverAttendance.model');
 const notificationService = require('../common/services/notification.service');
 const { sendNotificationsToRoles, formatDriverPunchInNotification, formatDriverPunchOutNotification } = require('../utils/notifcationHelper');
+const TripSchedule = require('../models/tripSchedule.model');
+const DriverLocation = require('./driverLocation.service');
 
 class DriverAttendanceService {
   /**
@@ -31,12 +33,35 @@ class DriverAttendanceService {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
-      const attendance = await DriverAttendance.findOne({
+      // First check for today's attendance
+      let attendance = await DriverAttendance.findOne({
         driverId: userId,
         date: today,
         isActive: true
       });
 
+      // If no attendance for today or no open punch, check for active punch from previous days
+      if (!attendance || !attendance.punches || attendance.punches.length === 0 || 
+          (attendance.punches[attendance.punches.length - 1].outTime !== null)) {
+        
+        // Look for any previous attendance with an open punch (no outTime)
+        const previousAttendance = await DriverAttendance.findOne({
+          driverId: userId,
+          date: { $lt: today },
+          status: 'punched-in',
+          isActive: true,
+          'punches.outTime': null
+        }).sort({ date: -1 }); // Get the most recent one
+
+        // If found a previous attendance with open punch, use it
+        if (previousAttendance && 
+            previousAttendance.punches && 
+            previousAttendance.punches.length > 0) {
+          attendance = previousAttendance;
+        }
+      }
+
+      // If still no attendance with open punch found
       if (!attendance || !attendance.punches || attendance.punches.length === 0) {
         return {
           isPunchedIn: false,
@@ -148,8 +173,8 @@ class DriverAttendanceService {
     // Record location in the driver location tracking system if coordinates provided
     if (punchData.coordinates) {
       try {
-        const DriverLocation = require('./driverLocation.service');
-        await DriverLocation.recordLocation({
+        
+        DriverLocation.recordLocation({
           driverId,
           coordinates: punchData.coordinates,
           source: 'attendance'
@@ -191,16 +216,42 @@ class DriverAttendanceService {
       throw new Error('Driver not found');
     }
 
+    // Check if driver has any in-progress trips
+
+    const activeTrips = await TripSchedule.findOne({
+      driverId: driverId,
+      status: 'in progress',
+      isActive: true,
+      deletedAt: null
+    });
+
+    if (activeTrips) {
+      throw new Error('Cannot punch out while you have trips in progress. Please complete all trips first.');
+    }
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    // Get today's attendance record
-    const attendance = await DriverAttendance.findOne({
+    // First check today's attendance record
+    let attendance = await DriverAttendance.findOne({
       driverId: driverId,
       date: today,
       status: 'punched-in',
       isActive: true
     });
+
+    // If no active punch-in found for today, check previous days
+    if (!attendance || !attendance.punches || attendance.punches.length === 0 || 
+        attendance.punches[attendance.punches.length - 1].outTime !== null) {
+      
+      attendance = await DriverAttendance.findOne({
+        driverId: driverId,
+        date: { $lt: today },
+        status: 'punched-in',
+        isActive: true,
+        'punches.outTime': null
+      }).sort({ date: -1 }); // Get the most recent one
+    }
 
     if (!attendance || !attendance.punches || attendance.punches.length === 0) {
       throw new Error('No active punch-in found');
@@ -244,8 +295,8 @@ class DriverAttendanceService {
     // Record location in the driver location tracking system if coordinates provided
     if (punchData.coordinates) {
       try {
-        const DriverLocation = require('./driverLocation.service');
-        await DriverLocation.recordLocation({
+
+        DriverLocation.recordLocation({
           driverId,
           coordinates: punchData.coordinates,
           source: 'attendance'
@@ -272,18 +323,60 @@ class DriverAttendanceService {
    * Get count of drivers who are currently punched in
    * @returns {Object} Count of punched-in drivers and other stats
    */
-  async getPunchedInDriversCount() {
+  async getPunchedInDriversCount(currentUserRole) {
     try {
+      let showLocation = false;
+      if (currentUserRole === 'admin' || currentUserRole === 'super-admin') {
+        showLocation = true;
+      }
+      
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       
-      // Get all attendance records for today with punched-in status
-      const punchedInAttendances = await DriverAttendance.find({
+      // Find all currently punched-in drivers, using the same logic as getDriverPunchStatus
+      // This includes:
+      // 1. Drivers who punched in today and haven't punched out
+      // 2. Drivers who punched in on a previous day and haven't punched out yet
+
+      // First get today's attendance records with punched-in status
+      const todayPunchedInAttendances = await DriverAttendance.find({
         date: today,
         status: 'punched-in',
-        isActive: true
+        isActive: true,
+        'punches.outTime': null // At least one punch without an outTime
       }).lean();
       
+      // Then get previous days' attendance records with no punch-out
+      const previousDaysPunchedInAttendances = await DriverAttendance.find({
+        date: { $lt: today },
+        status: 'punched-in',
+        isActive: true,
+        'punches.outTime': null // At least one punch without an outTime
+      }).lean();
+      
+      // Combine both sets but ensure no duplicate drivers
+      const driverIdMap = new Map();
+      
+      // Process today's attendance records first
+      todayPunchedInAttendances.forEach(attendance => {
+        const driverId = attendance.driverId.toString();
+        if (!driverIdMap.has(driverId)) {
+          driverIdMap.set(driverId, attendance);
+        }
+      });
+      
+      // Then add previous days' records if driver not already included
+      previousDaysPunchedInAttendances.forEach(attendance => {
+        const driverId = attendance.driverId.toString();
+        if (!driverIdMap.has(driverId)) {
+          driverIdMap.set(driverId, attendance);
+        }
+      });
+      
+      // Convert map values to array of attendance records
+      const punchedInAttendances = Array.from(driverIdMap.values());
+      
+      // Count of currently punched-in drivers
       const punchedInCount = punchedInAttendances.length;
       
       // Get all attendance records for today (including punched out)
@@ -303,26 +396,31 @@ class DriverAttendanceService {
       const driverIds = punchedInAttendances.map(a => a.driverId);
       const drivers = await User.find({
         _id: { $in: driverIds }
-      }).select('name phone').lean();
+      }).select('name phone lastLocation').lean();
       
       // Create a map of driver data keyed by driver ID
       const driverMap = {};
       drivers.forEach(driver => {
         driverMap[driver._id.toString()] = {
           name: driver.name,
-          phone: driver.phone || null
+          phone: driver.phone || null,
+          lastLocation: showLocation ? (driver.lastLocation || null) : null
         };
       });
       
       // Enrich attendance records with driver information
       const punchedInDrivers = punchedInAttendances.map(attendance => {
         const driverId = attendance.driverId.toString();
+        
+        // Get the last punch (the one without an outTime)
+        const lastPunch = attendance.punches?.length > 0 
+          ? attendance.punches.find(p => !p.outTime) || attendance.punches[attendance.punches.length - 1]
+          : null;
+          
         return {
           driverId,
           ...driverMap[driverId],
-          punchInTime: attendance.punches && attendance.punches.length > 0 
-            ? attendance.punches[attendance.punches.length - 1].inTime 
-            : null
+          punchInTime: showLocation ? lastPunch?.inTime || null : null
         };
       });
       
@@ -464,6 +562,177 @@ class DriverAttendanceService {
         pages: Math.ceil(totalCount / limit)
       }
     };
+  }
+
+  /**
+   * Get all drivers who are punched in but not assigned to any active trips
+   * @param {string} currentUserRole - The role of the user making the request
+   * @returns {Promise<Object>} Idle drivers with their details
+   */
+  async getIdleDrivers(currentUserRole) {
+    try {
+      let showLocation = false;
+      if (currentUserRole === 'admin' || currentUserRole === 'super-admin') {
+        showLocation = true;
+      }
+      
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      // Find all currently punched-in drivers using the same logic as getPunchedInDriversCount
+      // First get today's attendance records with punched-in status
+      const todayPunchedInAttendances = await DriverAttendance.find({
+        date: today,
+        status: 'punched-in',
+        isActive: true,
+        'punches.outTime': null // At least one punch without an outTime
+      }).lean();
+      
+      // Then get previous days' attendance records with no punch-out
+      const previousDaysPunchedInAttendances = await DriverAttendance.find({
+        date: { $lt: today },
+        status: 'punched-in',
+        isActive: true,
+        'punches.outTime': null // At least one punch without an outTime
+      }).lean();
+      
+      // Combine both sets but ensure no duplicate drivers
+      const driverIdMap = new Map();
+      
+      // Process today's attendance records first
+      todayPunchedInAttendances.forEach(attendance => {
+        const driverId = attendance.driverId.toString();
+        if (!driverIdMap.has(driverId)) {
+          driverIdMap.set(driverId, attendance);
+        }
+      });
+      
+      // Then add previous days' records if driver not already included
+      previousDaysPunchedInAttendances.forEach(attendance => {
+        const driverId = attendance.driverId.toString();
+        if (!driverIdMap.has(driverId)) {
+          driverIdMap.set(driverId, attendance);
+        }
+      });
+      
+      // Convert map values to array of attendance records
+      const punchedInAttendances = Array.from(driverIdMap.values());
+      
+      // Get driver IDs who are currently punched in
+      const punchedInDriverIds = punchedInAttendances.map(a => a.driverId);
+      
+      // Find all active trips with driver assignments
+      const activeTrips = await TripSchedule.find({
+        status: 'in progress',
+        isActive: true,
+        deletedAt: null,
+        driverId: { $ne: null }
+      }, { driverId: 1 }).lean();
+      
+      // Get the driver IDs who are currently assigned to active trips
+      const driversWithActiveTrips = new Set(
+        activeTrips.map(trip => trip.driverId.toString())
+      );
+      
+      // Filter out drivers who are on active trips
+      const idleDriverAttendances = punchedInAttendances.filter(
+        attendance => !driversWithActiveTrips.has(attendance.driverId.toString())
+      );
+      
+      // If no idle drivers found, return empty result
+      if (idleDriverAttendances.length === 0) {
+        return {
+          idleDriversCount: 0,
+          totalPunchedInCount: punchedInAttendances.length,
+          idleDrivers: []
+        };
+      }
+      
+      // Get driver details for idle drivers
+      const idleDriverIds = idleDriverAttendances.map(a => a.driverId);
+      const drivers = await User.find({
+        _id: { $in: idleDriverIds }
+      }).select('name phone lastLocation').lean();
+      
+      // Create a map of driver data keyed by driver ID
+      const driverMap = {};
+      drivers.forEach(driver => {
+        driverMap[driver._id.toString()] = {
+          name: driver.name,
+          phone: driver.phone || null,
+          lastLocation: showLocation ? (driver.lastLocation || null) : null
+        };
+      });
+      
+      // Get the last completed trip for each idle driver
+      const lastCompletedTrips = await TripSchedule.find({
+        driverId: { $in: idleDriverIds },
+        status: 'completed',
+        isActive: true,
+        deletedAt: null
+      }, {
+        driverId: 1, 
+        actualEndTime: 1
+      })
+      .sort({ actualEndTime: -1 })
+      .lean();
+      
+      // Create a map of last completed trip end times by driver ID
+      const lastTripEndTimeMap = {};
+      lastCompletedTrips.forEach(trip => {
+        const driverId = trip.driverId.toString();
+        // Only store the first one for each driver (most recent)
+        if (!lastTripEndTimeMap[driverId] && trip.actualEndTime) {
+          lastTripEndTimeMap[driverId] = trip.actualEndTime;
+        }
+      });
+      
+      const now = new Date();
+      
+      // Enrich attendance records with driver information and idle time
+      const idleDrivers = idleDriverAttendances.map(attendance => {
+        const driverId = attendance.driverId.toString();
+        
+        // Get the last punch (the one without an outTime)
+        const lastPunch = attendance.punches?.length > 0 
+          ? attendance.punches.find(p => !p.outTime) || attendance.punches[attendance.punches.length - 1]
+          : null;
+        
+        const punchInTime = lastPunch?.inTime || null;
+        
+        // Calculate idle time
+        // If there's a last trip, idle time is since that trip ended
+        // Otherwise, idle time is since punch-in time
+        const idleFromTime = lastTripEndTimeMap[driverId] || punchInTime;
+        
+        // Calculate idle time in hours if we have a valid idle from time
+        let idleHours = 0;
+        if (idleFromTime) {
+          idleHours = (now - new Date(idleFromTime)) / (1000 * 60 * 60);
+        }
+        
+        return {
+          driverId,
+          ...driverMap[driverId],
+          punchInTime: punchInTime,
+          idleFrom: idleFromTime,
+          idleHours: parseFloat(idleHours.toFixed(2)),
+          idleTimeInMinutes: Math.floor(idleHours * 60)
+        };
+      });
+      
+      // Sort drivers by idle time (longest idle time first)
+      idleDrivers.sort((a, b) => b.idleHours - a.idleHours);
+      
+      return {
+        idleDriversCount: idleDrivers.length,
+        totalPunchedInCount: punchedInAttendances.length,
+        idleDrivers
+      };
+    } catch (error) {
+      console.error('Get idle drivers error:', error);
+      throw error;
+    }
   }
 }
 

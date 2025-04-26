@@ -20,7 +20,7 @@ const recordLocation = catchAsync(async (req, res) => {
   if (req.user.role === 'driver') {
     driverId = req.user._id;
   } else if (req.user.role !== 'admin' && req.user.role !== 'super-admin') {
-    throw new ApiError(httpStatus.FORBIDDEN, 'Only drivers can update their own location, or admins can update any driver location');
+    throw new ApiError(httpStatus.status.FORBIDDEN, 'Only drivers can update their own location, or admins can update any driver location');
   }
   
   const locationData = {
@@ -32,7 +32,7 @@ const recordLocation = catchAsync(async (req, res) => {
   
   const locationEntry = await driverLocationService.recordLocation(locationData);
   
-  return res.status(httpStatus.CREATED).json({
+  return res.status(httpStatus.status.CREATED).json({
     success: true,
     message: 'Location recorded successfully',
     data: locationEntry
@@ -47,7 +47,7 @@ const recordLocation = catchAsync(async (req, res) => {
 const getAllDriversLatestLocation = catchAsync(async (req, res) => {
   const locations = await driverLocationService.getAllDriversLatestLocation();
   
-  return res.status(httpStatus.OK).json({
+  return res.status(httpStatus.status.OK).json({
     success: true,
     data: locations
   });
@@ -69,7 +69,7 @@ const getDriverLocationHistory = catchAsync(async (req, res) => {
     limit
   });
   
-  return res.status(httpStatus.OK).json({
+  return res.status(httpStatus.status.OK).json({
     success: true,
     data: history
   });
@@ -85,7 +85,7 @@ const getDriverLatestLocation = catchAsync(async (req, res) => {
   
   const location = await driverLocationService.getDriverLatestLocation(driverId);
   
-  return res.status(httpStatus.OK).json({
+  return res.status(httpStatus.status.OK).json({
     success: true,
     data: location
   });

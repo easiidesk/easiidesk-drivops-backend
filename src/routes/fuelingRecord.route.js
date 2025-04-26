@@ -357,4 +357,58 @@ router.delete('/:id',
   fuelingRecordController.deleteFuelingRecord
 );
 
+/**
+ * @swagger
+ * /fueling-records/driver-history:
+ *   get:
+ *     summary: Get fueling history for a driver
+ *     tags: [Fueling Records]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: driverId
+ *         schema:
+ *           type: string
+ *         description: Driver ID (only for admins; drivers will see their own records)
+ *       - in: query
+ *         name: vehicleId
+ *         schema:
+ *           type: string
+ *         description: Filter by vehicle ID
+ *       - in: query
+ *         name: startDate
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Filter by start date
+ *       - in: query
+ *         name: endDate
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Filter by end date
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *         description: Page number
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *         description: Number of items per page
+ *     responses:
+ *       200:
+ *         description: Driver's fueling history with filters
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Driver not found
+ */
+router.get('/driver-history', 
+  validateRequest(queryParamsSchema),
+  fuelingRecordController.getDriverFuelingHistory
+);
+
 module.exports = router; 

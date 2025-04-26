@@ -61,7 +61,7 @@ const punchOut = catchAsync(async (req, res) => {
  * @access Private - Admin, Super Admin, Scheduler, Requestor
  */
 const getPunchedInDriversCount = catchAsync(async (req, res) => {
-  const countData = await driverAttendanceService.getPunchedInDriversCount();
+  const countData = await driverAttendanceService.getPunchedInDriversCount(req.user.role);
   
   // Format the response with a more descriptive structure
   return res.json({
@@ -132,6 +132,17 @@ const getDriverAttendanceHistory = catchAsync(async (req, res) => {
   return res.json(history);
 });
 
+/**
+ * Get drivers who are punched in but not assigned to any active trips
+ * @route GET /api/driver-attendance/idle-drivers
+ * @access Private - Admin, Super Admin
+ */
+const getIdleDrivers = catchAsync(async (req, res) => {
+  const idleDrivers = await driverAttendanceService.getIdleDrivers(req.user.role);
+  
+  return res.json(idleDrivers);
+});
+
 module.exports = {
   getPunchStatus,
   punchIn,
@@ -139,5 +150,6 @@ module.exports = {
   getPunchedInDriversCount,
   getAllDriverAttendance,
   getAttendanceHistory,
-  getDriverAttendanceHistory
+  getDriverAttendanceHistory,
+  getIdleDrivers
 }; 

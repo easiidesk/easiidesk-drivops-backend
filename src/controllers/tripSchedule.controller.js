@@ -28,12 +28,28 @@ const getSchedules = catchAsync(async (req, res) => {
   
   // Add date range filter for trip start time
   if (req.query.dateFrom || req.query.dateTo) {
-    filter['destinations.tripStartTime'] = {};
-    if (req.query.dateFrom) {
-      filter['destinations.tripStartTime'].$gte = new Date(req.query.dateFrom);
+    // Create a proper $or query at the top level of the filter
+    if (!filter.$or) {
+      filter.$or = [];
     }
+    
+    // Build date conditions
+    const dateConditions = {};
+    
+    if (req.query.dateFrom) {
+      const fromDate = new Date(req.query.dateFrom);
+      dateConditions.$gte = fromDate;
+    }
+    
     if (req.query.dateTo) {
-      filter['destinations.tripStartTime'].$lte = new Date(req.query.dateTo);
+      const toDate = new Date(req.query.dateTo);
+      dateConditions.$lte = toDate;
+    }
+    
+    // Apply date conditions to different fields
+    if (Object.keys(dateConditions).length > 0) {
+      filter.$or.push({ tripStartTime: dateConditions });
+      filter.$or.push({ actualStartTime: dateConditions });
     }
   }
   
@@ -43,7 +59,7 @@ const getSchedules = catchAsync(async (req, res) => {
     page: req.query.page,
   };
   
-  const result = await tripScheduleService.getSchedules(filter, options);
+  const result = await tripScheduleService.getSchedules(filter, options, req.user.role);
   res.send(result);
 });
 
@@ -54,7 +70,7 @@ const getSchedules = catchAsync(async (req, res) => {
 const getSchedule = catchAsync(async (req, res) => {
   const tripSchedule = await tripScheduleService.getScheduleById(req.params.id);
   if (!tripSchedule) {
-    throw new ApiError(httpStatus.NOT_FOUND, 'Trip schedule not found');
+    throw new ApiError(httpStatus.status.NOT_FOUND, 'Trip schedule not found');
   }
   res.send(tripSchedule);
 });
@@ -75,7 +91,7 @@ const createSchedule = catchAsync(async (req, res) => {
       }
     }
 
-    const tripScheduleData = await tripScheduleService.getScheduleById(tripSchedule.id);
+    tripScheduleService.getScheduleById(tripSchedule.id).then(tripScheduleData => {
 
     // Notify all schedulers-admins-super-admins
     sendNotificationsToRoles(['scheduler', 'admin', 'super-admin'], ['receiveTripScheduledNotification'], 'New Trip Schedule', formatTripScheduleNotification(tripScheduleData), {
@@ -100,13 +116,16 @@ const createSchedule = catchAsync(async (req, res) => {
         console.error('Send notification error:', error);
       });
     }
+  }).catch(error => {
+    console.error('Error getting trip schedule data:', error);
+  });
   
-    res.status(httpStatus.CREATED).send(tripSchedule);
+    res.status(httpStatus.status.CREATED).send(tripSchedule);
   } catch (error) {
     if(error instanceof ApiError){
       throw error;
     }
-    throw new ApiError(httpStatus.UNKNOWN_ERROR, error.message);
+    throw new ApiError(httpStatus.status.UNKNOWN_ERROR, error.message);
   }
 });
 
@@ -119,7 +138,7 @@ const updateSchedule = catchAsync(async (req, res) => {
   const tripSchedule = await tripScheduleService.updateSchedule(req.params.id, req.body, req.user._id);
 
   // Updated schedule
-  const updatedSchedule = await tripScheduleService.getScheduleById(req.params.id);
+  tripScheduleService.getScheduleById(req.params.id).then(updatedSchedule => {
 
   // Notify all schedulers-admins-super-admins
   sendNotificationsToRoles(['scheduler', 'admin', 'super-admin'], ['receiveTripScheduledNotification'], 'Trip Re-Scheduled', formatTripScheduleNotification(updatedSchedule), {
@@ -144,6 +163,9 @@ const updateSchedule = catchAsync(async (req, res) => {
       console.error('Send notification error:', error);
     });
   }
+  }).catch(error => {
+    console.error('Error getting trip schedule data:', error);
+  });
   
   res.send(tripSchedule);
 });
@@ -165,7 +187,7 @@ const deleteSchedule = catchAsync(async (req, res) => {
   }
   
   await tripScheduleService.deleteSchedule(req.params.id, req.user._id);
-  res.status(httpStatus.NO_CONTENT).send();
+  res.status(httpStatus.status.NO_CONTENT).send();
 });
 
 /**
@@ -186,7 +208,7 @@ const cancelSchedule = catchAsync(async (req, res) => {
   
   await tripScheduleService.cancelSchedule(req.params.id, req.user._id);
 
-  const cancelledSchedule = await tripScheduleService.getScheduleById(req.params.id);
+  tripScheduleService.getScheduleById(req.params.id).then(cancelledSchedule => {
 
   // Notify all schedulers-admins-super-admins
   sendNotificationsToRoles(['scheduler', 'admin', 'super-admin'], ['receiveTripScheduledNotification'], 'Trip Cancelled', formatTripScheduleNotification(cancelledSchedule), {
@@ -211,8 +233,11 @@ const cancelSchedule = catchAsync(async (req, res) => {
       console.error('Send notification error:', error);
     });
   }
+  }).catch(error => {
+    console.error('Error getting trip schedule data:', error);
+  });
 
-  res.status(httpStatus.NO_CONTENT).send();
+  res.status(httpStatus.status.NO_CONTENT).send();
 });
 
 /**
@@ -249,7 +274,7 @@ const getDriverMyTrips = catchAsync(async (req, res) => {
     limit
   });
   
-  return res.status(httpStatus.OK).json({
+  return res.status(httpStatus.status.OK).json({
     success: true,
     data: trips
   });
@@ -268,7 +293,7 @@ const getDriverMyUpcomingTrips = catchAsync(async (req, res) => {
     limit
   });
   
-  return res.status(httpStatus.OK).json({
+  return res.status(httpStatus.status.OK).json({
     success: true,
     data: trips
   });
@@ -284,7 +309,7 @@ const startTrip = catchAsync(async (req, res) => {
   const { odometer, coordinates } = req.body;
   
   if (!odometer) {
-    throw new ApiError(httpStatus.BAD_REQUEST, 'Odometer reading is required');
+    throw new ApiError(httpStatus.status.BAD_REQUEST, 'Odometer reading is required');
   }
   
   const trip = await tripScheduleService.startTrip(tripId, req.user._id, {
@@ -292,7 +317,7 @@ const startTrip = catchAsync(async (req, res) => {
     coordinates
   });
   
-  return res.status(httpStatus.OK).json({
+  return res.status(httpStatus.status.OK).json({
     success: true,
     message: 'Trip started successfully',
     data: trip
@@ -309,7 +334,7 @@ const completeTrip = catchAsync(async (req, res) => {
   const { odometer, notes, coordinates } = req.body;
   
   if (!odometer) {
-    throw new ApiError(httpStatus.BAD_REQUEST, 'Odometer reading is required');
+    throw new ApiError(httpStatus.status.BAD_REQUEST, 'Odometer reading is required');
   }
   
   const trip = await tripScheduleService.completeTrip(tripId, req.user._id, {
@@ -318,7 +343,7 @@ const completeTrip = catchAsync(async (req, res) => {
     coordinates
   });
   
-  return res.status(httpStatus.OK).json({
+  return res.status(httpStatus.status.OK).json({
     success: true,
     message: 'Trip completed successfully',
     data: trip

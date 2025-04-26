@@ -27,8 +27,6 @@ const requestorNotificationSchema = {
 
 const driverNotificationSchema = {
   receiveNotification: true,
-  receiveMyTripScheduledNotification: true,
-  receiveMyTripScheduleUpdatedNotification: true,
   receiveReminderForUpcomingTrip: true,
   reminderForUpcomingTripTime: 10,
   receiveReminderForPunchOut: true,

@@ -274,4 +274,77 @@ router.get('/:driverId/history',
   driverAttendanceController.getDriverAttendanceHistory
 );
 
+/**
+ * @swagger
+ * /driver-attendance/idle-drivers:
+ *   get:
+ *     summary: Get drivers who are punched in but not assigned to active trips
+ *     tags: [Driver Attendance]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of idle drivers with idle time information
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 idleDriversCount:
+ *                   type: number
+ *                   description: Number of drivers who are punched in but not on active trips
+ *                   example: 3
+ *                 totalPunchedInCount:
+ *                   type: number
+ *                   description: Total number of drivers who are punched in
+ *                   example: 8
+ *                 idleDrivers:
+ *                   type: array
+ *                   description: List of idle drivers with their details
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       driverId:
+ *                         type: string
+ *                         description: Driver ID
+ *                         example: "507f1f77bcf86cd799439011"
+ *                       name:
+ *                         type: string
+ *                         description: Driver name
+ *                         example: "John Doe"
+ *                       phone:
+ *                         type: string
+ *                         description: Driver phone number
+ *                         example: "+1234567890"
+ *                       lastLocation:
+ *                         type: object
+ *                         description: Driver's last known location (admin/super-admin only)
+ *                       punchInTime:
+ *                         type: string
+ *                         format: date-time
+ *                         description: Time when the driver punched in
+ *                         example: "2023-03-15T08:30:00.000Z"
+ *                       idleFrom:
+ *                         type: string
+ *                         format: date-time
+ *                         description: Time since the driver has been idle
+ *                         example: "2023-03-15T09:45:00.000Z"
+ *                       idleHours:
+ *                         type: number
+ *                         description: Hours the driver has been idle
+ *                         example: 2.5
+ *                       idleTimeInMinutes:
+ *                         type: number
+ *                         description: Minutes the driver has been idle
+ *                         example: 150
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden - insufficient permissions
+ */
+router.get('/idle-drivers', 
+  authorize(['admin', 'super-admin']), 
+  driverAttendanceController.getIdleDrivers
+);
+
 module.exports = router; 

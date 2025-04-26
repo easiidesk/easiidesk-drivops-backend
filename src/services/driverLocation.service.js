@@ -23,18 +23,37 @@ const recordLocation = async (locationData) => {
   if (!driver) {
     throw new ApiError(httpStatus.NOT_FOUND, 'Driver not found');
   }
+
+  // Get location name from coordinates
+  let locationName = '';
+  try {
+    const [lat, lon] = locationData.coordinates;
+    const response = await fetch(`https://geocode.maps.co/reverse?lat=${lat}&lon=${lon}&api_key=6809ed9fcf275838027534nhwa2ca00`);
+    const data = await response.json();
+    locationName = data.display_name;
+  } catch (error) {
+    console.error('Error getting location name:', error);
+  }
   
   // Create location entry
   const locationEntry = await DriverLocation.create({
     driverId: locationData.driverId,
-    location: {
-      type: 'Point',
-      coordinates: locationData.coordinates
-    },
-    timestamp: new Date(),
+    geometry: { type: "Point", coordinates: locationData.coordinates },
     tripId: locationData.tripId || null,
-    source: locationData.source || 'background'
+    source: locationData.source || 'background',
+    location: locationName
   });
+
+  // Update user's last location
+  await User.findByIdAndUpdate(locationData.driverId, {
+    lastLocation: {
+      type: "Point",
+      coordinates: locationData.coordinates,
+      location: locationName,
+      timestamp: new Date()
+    }
+  });
+  
   
   return locationEntry;
 };
@@ -69,14 +88,14 @@ const getAllDriversLatestLocation = async () => {
       }
     },
     {
-      $sort: { timestamp: -1 }
+      $sort: { createdAt: -1 }
     },
     {
       $group: {
         _id: '$driverId',
         locationId: { $first: '$_id' },
-        coordinates: { $first: '$location.coordinates' },
-        timestamp: { $first: '$timestamp' },
+        coordinates: { $first: '$coordinates' },
+        createdAt: { $first: '$createdAt' },
         tripId: { $first: '$tripId' },
         source: { $first: '$source' }
       }
@@ -87,7 +106,7 @@ const getAllDriversLatestLocation = async () => {
         driverId: '$_id',
         locationId: 1,
         coordinates: 1,
-        timestamp: 1,
+        createdAt: 1,
         tripId: 1,
         source: 1
       }
@@ -132,20 +151,20 @@ const getDriverLocationHistory = async (driverId, options = {}) => {
   
   // Add time filter if provided
   if (options.startTime || options.endTime) {
-    filter.timestamp = {};
+    filter.createdAt = {};
     
     if (options.startTime) {
-      filter.timestamp.$gte = new Date(options.startTime);
+      filter.createdAt.$gte = new Date(options.startTime);
     }
     
     if (options.endTime) {
-      filter.timestamp.$lte = new Date(options.endTime);
+      filter.createdAt.$lte = new Date(options.endTime);
     }
   }
   
   // Get paginated results
   const locations = await DriverLocation.paginate(filter, {
-    sort: { timestamp: -1 },
+    sort: { createdAt: -1 },
     limit: options.limit ? parseInt(options.limit, 10) : 50,
     page: options.page ? parseInt(options.page, 10) : 1
   });
@@ -182,7 +201,7 @@ const getDriverLatestLocation = async (driverId) => {
   const latestLocation = await DriverLocation.findOne(
     { driverId, isActive: true },
     {},
-    { sort: { timestamp: -1 } }
+    { sort: { createdAt: -1 } }
   );
   
   if (!latestLocation) {
@@ -192,8 +211,8 @@ const getDriverLatestLocation = async (driverId) => {
   return {
     driverId: driver._id,
     locationId: latestLocation._id,
-    coordinates: latestLocation.location.coordinates,
-    timestamp: latestLocation.timestamp,
+    coordinates: latestLocation.coordinates,
+    createdAt: latestLocation.createdAt,
     tripId: latestLocation.tripId,
     source: latestLocation.source,
     driver: {
